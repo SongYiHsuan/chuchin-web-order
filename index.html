@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>線上點單</title>
+  <title>線上下單</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -428,7 +428,7 @@
 
 <script>
   // ==== 設定你的 Apps Script Web App URL ====
-  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbwuSKXm8pQLCjw66oNg43ud64vW6SWyKeptfoF21rAOoR8ZwAWbcrWRS3SjJJWAr5Phew/exec";
+  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbz9JlcI0_hDuT6tBjK4qkfNB7VOHvU_U7Hi-NeaUoKrtnTc6KSu3fBnGD3DH4VMCYUlHA/exec";
 
   // ==== 狀態 ====
   let allItems = [];        // 從 Sheet 取得的品項原始資料
@@ -751,13 +751,12 @@
     });
 
     const payload = {
-      channel: "web",   // 讓你區分是線上點單
-      customer: {
-        name: member.name,
-        phone: member.phone,
-        address: member.address,
-        deliveryTime: member.deliveryTime
-      },
+      source: "WEB",                     // 後端會寫到「來源」欄
+      customerName: member.name,
+      customerPhone: member.phone,
+      customerAddress: member.address,
+      deliveryTime: member.deliveryTime,
+    
       items: itemsPayload,
       subtotal,
       discountType: "amount",
