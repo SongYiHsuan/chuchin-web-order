@@ -428,7 +428,7 @@
 
 <script>
   // ==== 設定你的 Apps Script Web App URL ====
-  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbwq23Li7xYC0uAYlfJOb6KVVezMW9e7TeFY3yyugxE3f0WYW4LkOZJ9lbSujViZUByq/exec";
+  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyRupf9DZFR3tbiXCGDPQ_CdyLAFTP1dIKNeUskXM7buiz8lqf7gb06hFQkLSKOb4mBpw/exec";
 
   // ==== 狀態 ====
   let allItems = [];        // 從 Sheet 取得的品項原始資料
@@ -771,11 +771,12 @@
     try {
       const resp = await fetch(API_BASE_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        // ❌ 不要加 headers: { "Content-Type": "application/json" }
         body: JSON.stringify(payload)
       });
-      const data = await resp.json();
-      console.log("Order resp:", data);
+      const text = await resp.text();
+      console.log("raw response:", text);
+      const data = JSON.parse(text);
 
       if (data.status === "ok") {
         showToast("訂單送出成功！訂單編號：" + (data.orderId || ""));
