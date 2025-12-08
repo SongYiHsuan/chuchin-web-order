@@ -433,7 +433,7 @@
 
     <main class="item-panel">
       <div class="section-header">
-        <h2 id="currentCategoryTitle">全部品項</h2>
+      <h2 id="currentCategoryTitle"></h2>
         <span style="font-size:12px;color:#999;">點擊品項即可加入購物車</span>
       </div>
       <div class="item-list" id="itemList"></div>
@@ -627,29 +627,28 @@
 
   // ==== Render ====
 
-  function renderCategories() {
-    categoryListEl.innerHTML = "";
-    categories.forEach(cat => {
-      const btn = document.createElement("button");
-      btn.className = "category-btn" + (cat === currentCategory ? " active" : "");
-      btn.textContent = cat;
-      btn.onclick = () => {
-        currentCategory = cat;
-        document.getElementById("currentCategoryTitle").textContent =
-          cat === "全部" ? "全部品項" : cat;
-        renderCategories();
-        renderItems();
-      };
-      categoryListEl.appendChild(btn);
-    });
-  }
+    function renderCategories() {
+      categoryListEl.innerHTML = "";
+      categories.forEach(cat => {
+        const btn = document.createElement("button");
+        btn.className = "category-btn" + (cat === currentCategory ? " active" : "");
+        btn.textContent = cat;
+        btn.onclick = () => {
+          currentCategory = cat;
+          const titleEl = document.getElementById("currentCategoryTitle");
+          if (titleEl) titleEl.textContent = currentCategory;
+          renderCategories();
+          renderItems();
+        };
+        categoryListEl.appendChild(btn);
+      });
+    }
+
 
   function renderItems() {
     itemListEl.innerHTML = "";
-    const items = allItems.filter(it => {
-      if (currentCategory === "全部") return true;
-      return it.category === currentCategory;
-    });
+    const items = allItems.filter(it => it.category === currentCategory);
+
 
     if (!items.length) {
       itemListEl.innerHTML = '<p style="font-size:13px;color:#777;">目前沒有品項</p>';
