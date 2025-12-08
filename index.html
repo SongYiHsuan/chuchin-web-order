@@ -413,9 +413,6 @@
         display: flex;
       }
     }
-
-
-    }
   </style>
 </head>
 <body>
@@ -470,9 +467,10 @@
       <label for="memberAddress">地址</label>
       <textarea id="memberAddress" rows="2"></textarea>
     </div>
-    <div class="field">
+    <div class="field" id="deliveryRow">
       <label for="deliveryTime">希望送達時間</label>
-      <input id="deliveryTime" type="time" />
+      <!-- 年/月/日 + 時間 -->
+      <input id="deliveryTime" type="datetime-local" />
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" id="memberCancelBtn">取消</button>
@@ -506,7 +504,7 @@
   // ==== 狀態 ====
   let allItems = [];        // 從 Sheet 取得的品項原始資料
   let categories = [];      // 類別名稱陣列
-  let currentCategory = "全部";
+  let currentCategory = "";
   let cart = [];            // [{ category, name, price, stock, quantity }]
   let member = {
     name: "",
@@ -522,6 +520,7 @@
   const cartSummaryEl = document.getElementById("cartSummary");
   const checkoutBtn = document.getElementById("checkoutBtn");
   const toastEl = document.getElementById("toast");
+  const deliveryRow = document.getElementById("deliveryRow");
 
   const memberModal = document.getElementById("memberModal");
   const memberNameInput = document.getElementById("memberName");
@@ -580,21 +579,33 @@
     memberNameInput.value = member.name || "";
     memberPhoneInput.value = member.phone || "";
     memberAddressInput.value = member.address || "";
-    deliveryTimeInput.value = member.deliveryTime || "";
   
-    memberModal.dataset.force = force ? "1" : "0";
     memberModal.dataset.checkout = fromCheckout ? "1" : "0";
   
-    // 🔹依來源調整按鈕文字
+    //  依來源切換按鈕文字
+    memberSaveBtn.textContent = fromCheckout ? "確認訂單送出" : "儲存";
+  
     if (fromCheckout) {
-      memberSaveBtn.textContent = "確認訂單送出";
+      // 從「送出訂單」進來：一定要填送達日期時間 → 顯示欄位
+      deliveryRow.style.display = "block";
+  
+      if (member.deliveryTime) {
+        deliveryTimeInput.value = member.deliveryTime;
+      } else {
+        const now = new Date();
+        const tzOffset = now.getTimezoneOffset() * 60000;
+        const localISO = new Date(now - tzOffset).toISOString().slice(0, 16);
+        deliveryTimeInput.value = localISO;
+      }
     } else {
-      memberSaveBtn.textContent = "儲存";
+      // 從「會員資料」按鈕進來：不需要送達時間 → 直接隱藏欄位
+      deliveryRow.style.display = "none";
     }
-    memberCancelBtn.textContent = "取消";
   
     memberModal.classList.add("show");
   }
+
+
 
 
   function closeMemberModal() {
@@ -609,11 +620,17 @@
       const resp = await fetch(API_BASE_URL);
       const data = await resp.json();
       allItems = (data.items || []).filter(it => it.price != null);
-
+  
       const catSet = new Set();
       allItems.forEach(it => catSet.add(it.category));
-      // 這裡如果你已經把「全部」選項拿掉，就只用 catSet
       categories = [...Array.from(catSet)];
+  
+      // 預設選第一個種類，並設定標題
+      if (categories.length > 0) {
+        currentCategory = categories[0];
+        document.getElementById("currentCategoryTitle").textContent = currentCategory;
+      }
+  
       renderCategories();
       renderItems();
     } catch (err) {
@@ -621,6 +638,7 @@
       showToast("載入菜單失敗，請稍後再試");
     }
   }
+
 
   // ==== Render ====
 
@@ -935,30 +953,41 @@
     const name = memberNameInput.value.trim();
     const phone = memberPhoneInput.value.trim();
     const address = memberAddressInput.value.trim();
-    const deliveryTime = deliveryTimeInput.value;
-
+    const fromCheckout = memberModal.dataset.checkout === "1";
+  
     if (!name || !phone || !address) {
       showToast("請填寫姓名、電話與地址");
       return;
     }
+  
+    // 從送出訂單來，才需要檢查「日期+時間」
+    let deliveryTime = member.deliveryTime || "";
+    if (fromCheckout) {
+      deliveryTime = deliveryTimeInput.value;
+      if (!deliveryTime) {
+        showToast("請選擇送達日期與時間");
+        return;
+      }
+    }
 
+    memberCancelBtn.addEventListener("click", () => {
+      closeMemberModal();
+    });
+
+  
     member = { name, phone, address, deliveryTime };
     saveMemberToStorage();
-
-    const fromCheckout = memberModal.dataset.checkout === "1";
-
     closeMemberModal();
-    showToast("會員資料已儲存");
-
-    // 如果是從結帳流程進來，儲存後立刻送單
+  
     if (fromCheckout) {
+      // 右下角文字會顯示「確認訂單送出」，
+      // 按下後：先存資料，再正式送出訂單
       submitOrder();
+    } else {
+      showToast("會員資料已儲存");
     }
   });
 
-  memberCancelBtn.addEventListener("click", () => {
-    closeMemberModal();
-  });
 
 
   // 手機購物車 modal 事件
@@ -970,8 +999,21 @@
   });
 
   // 手機 / 桌機的「送出訂單」都走 startCheckout
-  cartModalCheckoutBtn.addEventListener("click", startCheckout);
-  checkoutBtn.addEventListener("click", startCheckout);
+  cartModalCheckoutBtn.addEventListener("click", () => {
+    if (!cart.length) {
+      showToast("請先選擇品項");
+      return;
+    }
+    openMemberModal(false, true);
+  });
+  checkoutBtn.addEventListener("click", () => {
+    if (!cart.length) {
+      showToast("請先選擇品項");
+      return;
+    }
+    // 從「送出訂單」進來 → 需要日期+時間
+    openMemberModal(false, true);
+  });
 
   // ==== 初始化 ====
   loadMemberFromStorage();
