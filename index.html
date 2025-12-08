@@ -506,7 +506,7 @@
   // ==== 狀態 ====
   let allItems = [];        // 從 Sheet 取得的品項原始資料
   let categories = [];      // 類別名稱陣列
-  let currentCategory = "全部";
+  let currentCategory = "";
   let cart = [];            // [{ category, name, price, stock, quantity }]
   let member = {
     name: "",
@@ -601,11 +601,24 @@
       const data = await resp.json();
       allItems = (data.items || []).filter(it => it.price != null);
 
-      const catSet = new Set();
-      allItems.forEach(it => catSet.add(it.category));
-      categories = ["全部", ...Array.from(catSet)];
-      renderCategories();
-      renderItems();
+    const catSet = new Set();
+    allItems.forEach(it => {
+      if (it.category) catSet.add(it.category);
+    });
+    
+    // 沒有「全部」，只放真正的分類
+    categories = Array.from(catSet);
+    
+    // 如果還沒選分類，就預設第一個
+    if (!currentCategory && categories.length > 0) {
+      currentCategory = categories[0];
+      const titleEl = document.getElementById("currentCategoryTitle");
+      if (titleEl) titleEl.textContent = currentCategory;
+    }
+    
+    renderCategories();
+    renderItems();
+
     } catch (err) {
       console.error(err);
       showToast("載入菜單失敗，請稍後再試");
