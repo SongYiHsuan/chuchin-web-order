@@ -581,12 +581,21 @@
     memberPhoneInput.value = member.phone || "";
     memberAddressInput.value = member.address || "";
     deliveryTimeInput.value = member.deliveryTime || "";
-
+  
     memberModal.dataset.force = force ? "1" : "0";
     memberModal.dataset.checkout = fromCheckout ? "1" : "0";
-
+  
+    // 🔹依來源調整按鈕文字
+    if (fromCheckout) {
+      memberSaveBtn.textContent = "確認訂單送出";
+    } else {
+      memberSaveBtn.textContent = "儲存";
+    }
+    memberCancelBtn.textContent = "取消";
+  
     memberModal.classList.add("show");
   }
+
 
   function closeMemberModal() {
     memberModal.classList.remove("show");
@@ -948,14 +957,9 @@
   });
 
   memberCancelBtn.addEventListener("click", () => {
-    const force = memberModal.dataset.force === "1";
-    const fromCheckout = memberModal.dataset.checkout === "1";
-    if (force || fromCheckout) {
-      showToast("請先確認會員資料");
-    } else {
-      closeMemberModal();
-    }
+    closeMemberModal();
   });
+
 
   // 手機購物車 modal 事件
   cartFab.addEventListener("click", () => {
