@@ -22,6 +22,7 @@
       display: flex;
       flex-direction: column;
     }
+    
     header {
       padding: 12px 16px;
       background: #ffffff;
@@ -65,13 +66,14 @@
       gap: 4px;
     }
     #categoryList {
+      flex: 1;
       display: flex;
-      flex-direction: row;
+      flex-direction: column;  /* 垂直排列按鈕 */
       gap: 4px;
-      overflow-x: auto;
-      padding-bottom: 4px;
+      overflow-y: auto;        /* 上下捲動 */
+      overflow-x: hidden;      /* 不要左右捲動 */
     }
-    
+      
     #categoryList::-webkit-scrollbar {
       height: 6px;           /* 可選：讓橫向捲軸小一點好看 */
     }
@@ -364,42 +366,53 @@
     }
 
     /* 手機：改成用浮動按鈕 + modal 顯示購物車 */
-@media (max-width: 768px) {
-  .main {
-    flex-direction: column;
-    padding-bottom: 80px;
-  }
-
-  .category-panel {
-          width: 100%;
-          max-width: none;
-          border-radius: 0;
-          border-bottom-left-radius: 16px;
-          border-bottom-right-radius: 16px;
-        }
-      
-        .category-title {
-          display: none;
-        }
-      
-        .category-btn {
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-      
-        .item-panel {
-          width: 100%;
-          margin-top: 8px;
-        }
-      
-        .cart-panel {
-          display: none;
-        }
-      
-        .cart-fab {
-          display: flex;
-        }
+    @media (max-width: 768px) {
+      .main {
+        flex-direction: column;
+        padding-bottom: 80px;
       }
+    
+      .category-panel {
+        width: 100%;
+        max-width: none;
+        border-radius: 0;
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
+        /* 手機版分類區塊本身不捲動，由裡面的 #categoryList 橫向捲 */
+      }
+    
+      .category-title {
+        display: none;
+      }
+    
+      .category-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+    
+      /* 手機版：分類改成橫向排 & 左右滑動 */
+      #categoryList {
+        display: flex;
+        flex-direction: row;
+        gap: 4px;
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+    
+      .item-panel {
+        width: 100%;
+        margin-top: 8px;
+      }
+    
+      .cart-panel {
+        display: none;
+      }
+    
+      .cart-fab {
+        display: flex;
+      }
+    }
+
     }
   </style>
 </head>
