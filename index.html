@@ -365,32 +365,33 @@
       font-weight: 700;
     }
 
-    /* 手機：改成用浮動按鈕 + modal 顯示購物車 */
     @media (max-width: 768px) {
       .main {
         flex-direction: column;
         padding-bottom: 80px;
       }
-    
       .category-panel {
         width: 100%;
         max-width: none;
         border-radius: 0;
         border-bottom-left-radius: 16px;
         border-bottom-right-radius: 16px;
-        /* 手機版分類區塊本身不捲動，由裡面的 #categoryList 橫向捲 */
       }
-    
       .category-title {
         display: none;
       }
     
+      /* 原本這裡的 .category-btn 改成這樣 */
       .category-btn {
-        white-space: nowrap;
+        flex: 0 0 25%;       /* 固定佔一列的 1/4 */
+        max-width: 25%;
+        white-space: nowrap; /* 文字不要換行 */
         flex-shrink: 0;
+        text-align: center;  /* 置中比較像 Tab 標籤 */
+        padding: 6px 4px;    /* 縮小一點 padding，按鈕比較不會太高 */
+        font-size: 13px;
       }
     
-      /* 手機版：分類改成橫向排 & 左右滑動 */
       #categoryList {
         display: flex;
         flex-direction: row;
@@ -412,6 +413,7 @@
         display: flex;
       }
     }
+
 
     }
   </style>
