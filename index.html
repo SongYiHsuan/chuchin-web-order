@@ -547,18 +547,18 @@
   // ==== 工具 ====
   // 點整個「希望送達時間」區塊都會觸發選擇器
   deliveryRow.addEventListener("click", (e) => {
-    // 如果本來就點到 input，自然會觸發，不用多做事
-    if (e.target === deliveryTimeInput) return;
+    e.preventDefault();
   
-    // 先嘗試使用原生 showPicker（Chrome / 新版瀏覽器）
     if (typeof deliveryTimeInput.showPicker === "function") {
+      // 支援 showPicker 的瀏覽器（Chrome / 新版 Edge 等）
       deliveryTimeInput.showPicker();
     } else {
-      // 其他瀏覽器：在使用者點擊 deliveryRow 的事件裡，主動幫 input 觸發 click
-      // 多數桌機 / 手機瀏覽器會因此直接開啟日期時間選擇器
+      // 其他瀏覽器就盡量模擬：先 focus 再觸發 click
+      deliveryTimeInput.focus();
       deliveryTimeInput.click();
     }
   });
+
 
 
   function showToast(msg) {
