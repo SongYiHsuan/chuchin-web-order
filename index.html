@@ -506,7 +506,7 @@
   // ==== 狀態 ====
   let allItems = [];        // 從 Sheet 取得的品項原始資料
   let categories = [];      // 類別名稱陣列
-  let currentCategory = "";
+  let currentCategory = "全部";
   let cart = [];            // [{ category, name, price, stock, quantity }]
   let member = {
     name: "",
@@ -570,27 +570,27 @@
     localStorage.setItem("webOrderMember", JSON.stringify(member));
   }
 
-  function openMemberModal(force = false) {
+  /**
+   * 開啟會員資料視窗
+   * @param {boolean} force       是否強制填（取消時不能關閉）
+   * @param {boolean} fromCheckout 是否從「送出訂單」流程進來
+   */
+  function openMemberModal(force = false, fromCheckout = false) {
     // 將目前 member 狀態填回 input
     memberNameInput.value = member.name || "";
     memberPhoneInput.value = member.phone || "";
     memberAddressInput.value = member.address || "";
     deliveryTimeInput.value = member.deliveryTime || "";
+
     memberModal.dataset.force = force ? "1" : "0";
+    memberModal.dataset.checkout = fromCheckout ? "1" : "0";
+
     memberModal.classList.add("show");
   }
 
   function closeMemberModal() {
     memberModal.classList.remove("show");
-  }
-
-  function ensureMemberInfo() {
-    // 沒有姓名 / 電話 / 地址 任何一項，就強制開啟
-    if (!member.name || !member.phone || !member.address) {
-      openMemberModal(true);
-      return false;
-    }
-    return true;
+    memberModal.dataset.checkout = "0";
   }
 
   // ==== 抓菜單 ====
@@ -601,24 +601,12 @@
       const data = await resp.json();
       allItems = (data.items || []).filter(it => it.price != null);
 
-    const catSet = new Set();
-    allItems.forEach(it => {
-      if (it.category) catSet.add(it.category);
-    });
-    
-    // 沒有「全部」，只放真正的分類
-    categories = Array.from(catSet);
-    
-    // 如果還沒選分類，就預設第一個
-    if (!currentCategory && categories.length > 0) {
-      currentCategory = categories[0];
-      const titleEl = document.getElementById("currentCategoryTitle");
-      if (titleEl) titleEl.textContent = currentCategory;
-    }
-    
-    renderCategories();
-    renderItems();
-
+      const catSet = new Set();
+      allItems.forEach(it => catSet.add(it.category));
+      // 這裡如果你已經把「全部」選項拿掉，就只用 catSet
+      categories = [...Array.from(catSet)];
+      renderCategories();
+      renderItems();
     } catch (err) {
       console.error(err);
       showToast("載入菜單失敗，請稍後再試");
@@ -627,28 +615,28 @@
 
   // ==== Render ====
 
-    function renderCategories() {
-      categoryListEl.innerHTML = "";
-      categories.forEach(cat => {
-        const btn = document.createElement("button");
-        btn.className = "category-btn" + (cat === currentCategory ? " active" : "");
-        btn.textContent = cat;
-        btn.onclick = () => {
-          currentCategory = cat;
-          const titleEl = document.getElementById("currentCategoryTitle");
-          if (titleEl) titleEl.textContent = currentCategory;
-          renderCategories();
-          renderItems();
-        };
-        categoryListEl.appendChild(btn);
-      });
-    }
-
+  function renderCategories() {
+    categoryListEl.innerHTML = "";
+    categories.forEach(cat => {
+      const btn = document.createElement("button");
+      btn.className = "category-btn" + (cat === currentCategory ? " active" : "");
+      btn.textContent = cat;
+      btn.onclick = () => {
+        currentCategory = cat;
+        document.getElementById("currentCategoryTitle").textContent = cat;
+        renderCategories();
+        renderItems();
+      };
+      categoryListEl.appendChild(btn);
+    });
+  }
 
   function renderItems() {
     itemListEl.innerHTML = "";
-    const items = allItems.filter(it => it.category === currentCategory);
-
+    const items = allItems.filter(it => {
+      if (!currentCategory) return true;
+      return it.category === currentCategory;
+    });
 
     if (!items.length) {
       itemListEl.innerHTML = '<p style="font-size:13px;color:#777;">目前沒有品項</p>';
@@ -843,20 +831,30 @@
     renderCart();
   }
 
-  // ==== 送單 ====
+  // ==== 結帳流程：先開會員視窗，再真正送單 ====
 
+  function startCheckout() {
+    if (!cart.length) {
+      showToast("請先選擇品項");
+      return;
+    }
+    const hasMember = member.name && member.phone && member.address;
+    // 有填過就給他看一次確認，沒填過就強制填寫
+    openMemberModal(!hasMember, true);
+  }
+
+  // 真正送出到 Apps Script
   async function submitOrder() {
     if (!cart.length) {
       showToast("請先選擇品項");
       return;
     }
-    if (!ensureMemberInfo()) {
-      // 會強制跳 modal，等填完再送
+
+    if (!member.name || !member.phone || !member.address) {
+      showToast("請先填寫會員資料");
+      openMemberModal(true, true);
       return;
     }
-
-    // 送單前再更新一次 member 資料中的「希望送達時間」
-    member.deliveryTime = deliveryTimeInput.value || member.deliveryTime || "";
 
     let subtotal = 0;
     const itemsPayload = cart.map(c => {
@@ -872,7 +870,7 @@
     });
 
     const payload = {
-      source: "WEB",                     // 後端會寫到「來源」欄
+      source: "WEB",
       customerName: member.name,
       customerPhone: member.phone,
       customerAddress: member.address,
@@ -893,7 +891,6 @@
     try {
       const resp = await fetch(API_BASE_URL, {
         method: "POST",
-        // 不指定 Content-Type，讓 Apps Script 用預設方式接收
         body: JSON.stringify(payload)
       });
       const text = await resp.text();
@@ -904,8 +901,7 @@
         showToast("訂單送出成功！訂單編號：" + (data.orderId || ""));
         cart = [];
         renderCart();
-        // 成功後順便關閉購物車 modal（手機）
-        cartModal.classList.remove("show");
+        cartModal.classList.remove("show"); // 手機關掉購物車 modal
       } else {
         showToast("送出失敗：" + (data.message || "未知錯誤"));
       }
@@ -921,7 +917,11 @@
   }
 
   // ==== 事件註冊 ====
-  memberButton.addEventListener("click", () => openMemberModal(false));
+
+  // 上方「會員資料」按鈕：單純開資料視窗，不送單
+  memberButton.addEventListener("click", () => openMemberModal(false, false));
+
+  // 會員視窗「儲存」按鈕
   memberSaveBtn.addEventListener("click", () => {
     const name = memberNameInput.value.trim();
     const phone = memberPhoneInput.value.trim();
@@ -932,16 +932,26 @@
       showToast("請填寫姓名、電話與地址");
       return;
     }
+
     member = { name, phone, address, deliveryTime };
     saveMemberToStorage();
+
+    const fromCheckout = memberModal.dataset.checkout === "1";
+
     closeMemberModal();
     showToast("會員資料已儲存");
+
+    // 如果是從結帳流程進來，儲存後立刻送單
+    if (fromCheckout) {
+      submitOrder();
+    }
   });
+
   memberCancelBtn.addEventListener("click", () => {
     const force = memberModal.dataset.force === "1";
-    if (force) {
-      // 第一次下單強制填寫，就不要關閉
-      showToast("請先填寫會員資料");
+    const fromCheckout = memberModal.dataset.checkout === "1";
+    if (force || fromCheckout) {
+      showToast("請先確認會員資料");
     } else {
       closeMemberModal();
     }
@@ -954,15 +964,16 @@
   cartModalCloseBtn.addEventListener("click", () => {
     cartModal.classList.remove("show");
   });
-  cartModalCheckoutBtn.addEventListener("click", submitOrder);
 
-  // 桌機結帳按鈕
-  checkoutBtn.addEventListener("click", submitOrder);
+  // 手機 / 桌機的「送出訂單」都走 startCheckout
+  cartModalCheckoutBtn.addEventListener("click", startCheckout);
+  checkoutBtn.addEventListener("click", startCheckout);
 
   // ==== 初始化 ====
   loadMemberFromStorage();
   loadMenu();
   renderCart(); // 初始化畫面
 </script>
+
 </body>
 </html>
