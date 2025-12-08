@@ -554,8 +554,9 @@
     if (typeof deliveryTimeInput.showPicker === "function") {
       deliveryTimeInput.showPicker();
     } else {
-      // 不支援 showPicker 的瀏覽器（例如某些 iOS），就 focus
-      deliveryTimeInput.focus();
+      // 其他瀏覽器：在使用者點擊 deliveryRow 的事件裡，主動幫 input 觸發 click
+      // 多數桌機 / 手機瀏覽器會因此直接開啟日期時間選擇器
+      deliveryTimeInput.click();
     }
   });
 
