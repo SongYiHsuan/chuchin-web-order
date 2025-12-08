@@ -413,6 +413,10 @@
         display: flex;
       }
     }
+    
+    #deliveryRow {
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -541,6 +545,20 @@
   const cartModalCheckoutBtn = document.getElementById("cartModalCheckoutBtn");
 
   // ==== 工具 ====
+  // 點整個「希望送達時間」區塊都會觸發選擇器
+  deliveryRow.addEventListener("click", (e) => {
+    // 如果本來就點到 input，自然會觸發，不用多做事
+    if (e.target === deliveryTimeInput) return;
+  
+    // 先嘗試使用原生 showPicker（Chrome / 新版瀏覽器）
+    if (typeof deliveryTimeInput.showPicker === "function") {
+      deliveryTimeInput.showPicker();
+    } else {
+      // 不支援 showPicker 的瀏覽器（例如某些 iOS），就 focus
+      deliveryTimeInput.focus();
+    }
+  });
+
 
   function showToast(msg) {
     toastEl.textContent = msg;
