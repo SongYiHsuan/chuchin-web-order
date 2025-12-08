@@ -969,11 +969,6 @@
         return;
       }
     }
-
-    memberCancelBtn.addEventListener("click", () => {
-      closeMemberModal();
-    });
-
   
     member = { name, phone, address, deliveryTime };
     saveMemberToStorage();
@@ -988,6 +983,10 @@
     }
   });
 
+
+  memberCancelBtn.addEventListener("click", () => {
+    closeMemberModal();
+  });
 
 
   // 手機購物車 modal 事件
