@@ -474,7 +474,7 @@
     <div class="field" id="deliveryRow">
       <label for="deliveryTime">希望送達時間</label>
       <!-- 年/月/日 + 時間 -->
-      <input id="deliveryTime" type="datetime-local" />
+      <input id="deliveryTime" type="datetime-local" step="600" />
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" id="memberCancelBtn">取消</button>
@@ -609,6 +609,15 @@
       
         // 每次都預設成『現在』
         const now = new Date();
+        
+        // 先把分鐘對齊到 10 分鐘一格（0,10,20,30,40,50）
+        const m = now.getMinutes();
+        const rounded = Math.floor(m / 10) * 10;
+        now.setMinutes(rounded);
+        now.setSeconds(0);
+        now.setMilliseconds(0);
+        
+        // 轉成符合 datetime-local 的本地時間格式 yyyy-MM-ddTHH:mm
         const tzOffset = now.getTimezoneOffset() * 60000;
         const localISO = new Date(now - tzOffset).toISOString().slice(0, 16);
         deliveryTimeInput.value = localISO;
