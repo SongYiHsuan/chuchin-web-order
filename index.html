@@ -166,6 +166,8 @@
       padding: 8px 10px;
       display: flex;
       flex-direction: column;
+      /* ★ 新增這行，讓子元素可以正確分配高度 */
+      min-height: 0;
     }
     .cart-item {
       padding: 6px 0;
@@ -434,6 +436,12 @@
     
     #deliveryRow {
       cursor: pointer;
+    }
+    #cartList {
+      flex: 1;              /* 吃掉剩餘高度 */
+      overflow-y: auto;     /* 垂直捲動 */
+      padding-right: 4px;   /* 避免捲軸蓋住內容，可視需要調整 */
+      min-height: 0;        /* 搭配 flex 正常收縮 */
     }
   </style>
 </head>
