@@ -474,7 +474,7 @@
     <div class="field" id="deliveryRow">
       <label for="deliveryTime">希望送達時間</label>
       <!-- 年/月/日 + 時間 -->
-      <input id="deliveryTime" type="datetime-local" step="600" />
+      <input id="deliveryTime" type="datetime-local" />
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" id="memberCancelBtn">取消</button>
@@ -546,31 +546,6 @@
 
   // ==== 工具 ====
 
-  // 對齊成 10 分鐘一格，變成 "2025-12-10T11:40" 或 "11:40" / "11:50" 等
-  function snapDatetimeLocalTo10Min(value) {
-    if (!value) return value;  // 空值直接回傳
-  
-    const [datePart, timePart] = value.split("T");
-    if (!timePart) return value;
-  
-    const [hh, mm] = timePart.split(":");
-    let hour = parseInt(hh, 10);
-    let minute = parseInt(mm, 10);
-  
-    if (Number.isNaN(hour) || Number.isNaN(minute)) return value;
-  
-    // 四捨五入到 10 分鐘一格
-    let rounded = Math.round(minute / 10) * 10;
-    if (rounded === 60) {
-      hour = (hour + 1) % 24;
-      rounded = 0;
-    }
-
-    const hhStr = String(hour).padStart(2, "0");
-    const mmStr = String(rounded).padStart(2, "0");
-    return `${datePart}T${hhStr}:${mmStr}`;
-  }
-
   // 點整個「希望送達時間」區塊都會觸發選擇器
   deliveryRow.addEventListener("click", (e) => {
     e.preventDefault();
@@ -622,48 +597,36 @@
    * @param {boolean} force       是否強制填（取消時不能關閉）
    * @param {boolean} fromCheckout 是否從「送出訂單」流程進來
    */
-  function openMemberModal(force = false, fromCheckout = false) {
-    // 將目前 member 狀態填回 input
-    memberNameInput.value = member.name || "";
-    memberPhoneInput.value = member.phone || "";
-    memberAddressInput.value = member.address || "";
-  
-    memberModal.dataset.checkout = fromCheckout ? "1" : "0";
-  
-    //  依來源切換按鈕文字
-    memberSaveBtn.textContent = fromCheckout ? "確認訂單送出" : "儲存";
-  
+    function openMemberModal(force = false, fromCheckout = false) {
+      // 將目前 member 狀態填回 input
+      memberNameInput.value = member.name || "";
+      memberPhoneInput.value = member.phone || "";
+      memberAddressInput.value = member.address || "";
+    
+      memberModal.dataset.checkout = fromCheckout ? "1" : "0";
+    
+      // 依來源切換按鈕文字
+      memberSaveBtn.textContent = fromCheckout ? "確認訂單送出" : "儲存";
+    
       if (fromCheckout) {
         deliveryRow.style.display = "block";
-      
+    
         // 每次都預設成『現在』
         const now = new Date();
-        
-        // 先把分鐘對齊到 10 分鐘一格（0,10,20,30,40,50）
-        const m = now.getMinutes();
-        const rounded = Math.floor(m / 10) * 10;
-        now.setMinutes(rounded);
-        now.setSeconds(0);
-        now.setMilliseconds(0);
-        
-        // 轉成符合 datetime-local 的本地時間格式 yyyy-MM-ddTHH:mm
         const tzOffset = now.getTimezoneOffset() * 60000;
         const localISO = new Date(now - tzOffset).toISOString().slice(0, 16);
         deliveryTimeInput.value = localISO;
       } else {
         deliveryRow.style.display = "none";
       }
-        
-        memberModal.classList.add("show");
+    
+      memberModal.classList.add("show");
     }
 
-
-
-
-  function closeMemberModal() {
-    memberModal.classList.remove("show");
-    memberModal.dataset.checkout = "0";
-  }
+    function closeMemberModal() {
+      memberModal.classList.remove("show");
+      memberModal.dataset.checkout = "0";
+    }
 
   // ==== 抓菜單 ====
 
@@ -1012,10 +975,9 @@
       return;
     }
   
-    // 從送出訂單來，才需要檢查「日期+時間」
     let deliveryTime = member.deliveryTime || "";
     if (fromCheckout) {
-      deliveryTime = snapDatetimeLocalTo10Min(deliveryTimeInput.value);
+      deliveryTime = deliveryTimeInput.value;
       if (!deliveryTime) {
         showToast("請選擇送達日期與時間");
         return;
@@ -1027,13 +989,12 @@
     closeMemberModal();
   
     if (fromCheckout) {
-      // 右下角文字會顯示「確認訂單送出」，
-      // 按下後：先存資料，再正式送出訂單
       submitOrder();
     } else {
       showToast("會員資料已儲存");
     }
   });
+
 
 
   memberCancelBtn.addEventListener("click", () => {
