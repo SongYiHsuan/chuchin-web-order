@@ -545,6 +545,32 @@
   const cartModalCheckoutBtn = document.getElementById("cartModalCheckoutBtn");
 
   // ==== 工具 ====
+
+  // 對齊成 10 分鐘一格，變成 "2025-12-10T11:40" 或 "11:40" / "11:50" 等
+  function snapDatetimeLocalTo10Min(value) {
+    if (!value) return value;  // 空值直接回傳
+  
+    const [datePart, timePart] = value.split("T");
+    if (!timePart) return value;
+  
+    const [hh, mm] = timePart.split(":");
+    let hour = parseInt(hh, 10);
+    let minute = parseInt(mm, 10);
+  
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return value;
+  
+    // 四捨五入到 10 分鐘一格
+    let rounded = Math.round(minute / 10) * 10;
+    if (rounded === 60) {
+      hour = (hour + 1) % 24;
+      rounded = 0;
+    }
+
+    const hhStr = String(hour).padStart(2, "0");
+    const mmStr = String(rounded).padStart(2, "0");
+    return `${datePart}T${hhStr}:${mmStr}`;
+  }
+
   // 點整個「希望送達時間」區塊都會觸發選擇器
   deliveryRow.addEventListener("click", (e) => {
     e.preventDefault();
@@ -558,7 +584,10 @@
       deliveryTimeInput.click();
     }
   });
-
+  deliveryTimeInput.addEventListener("blur", () => {
+    if (!deliveryTimeInput.value) return;
+    deliveryTimeInput.value = snapDatetimeLocalTo10Min(deliveryTimeInput.value);
+  });
 
 
   function showToast(msg) {
@@ -986,7 +1015,7 @@
     // 從送出訂單來，才需要檢查「日期+時間」
     let deliveryTime = member.deliveryTime || "";
     if (fromCheckout) {
-      deliveryTime = deliveryTimeInput.value;
+      deliveryTime = snapDatetimeLocalTo10Min(deliveryTimeInput.value);
       if (!deliveryTime) {
         showToast("請選擇送達日期與時間");
         return;
