@@ -250,6 +250,24 @@
       background: #d1d5db;
       cursor: default;
     }
+    /* 購物車內依分類群組的標題 */
+    .cart-category-title {
+      margin-top: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+    }
+    
+    /* 讓品項看起來是分類底下，用一點縮排 */
+    .cart-item {
+      padding: 6px 0;
+      padding-left: 8px;      /* ★ 新增縮排 */
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
 
     /* 底部固定訊息/錯誤 */
     .toast {
@@ -798,7 +816,7 @@
   function renderCart() {
     cartListEl.innerHTML = "";
     cartModalListEl.innerHTML = "";
-
+  
     if (!cart.length) {
       const emptyHtml = '<div class="cart-empty">尚未選擇品項</div>';
       cartListEl.innerHTML = emptyHtml;
@@ -810,29 +828,58 @@
       cartFabCount.textContent = "0";
       return;
     }
-
+  
+    // 小計
     let subtotal = 0;
     cart.forEach(c => subtotal += c.price * c.quantity);
     cartFabCount.textContent = String(cart.length);
-
+  
+    // ★ 依分類分組：{ "A013": [item1, item2...], "A014": [...] }
+    const grouped = {};
     cart.forEach(item => {
-      // 桌機版
-      const pcElement = createCartItemElement(
-        item,
-        () => changeQty(item, -1),
-        () => changeQty(item, +1)
-      );
-      cartListEl.appendChild(pcElement);
-
-      // 手機 modal 版
-      const mobileElement = createCartItemElement(
-        item,
-        () => changeQty(item, -1),
-        () => changeQty(item, +1)
-      );
-      cartModalListEl.appendChild(mobileElement);
+      const cat = item.category || "";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(item);
     });
-
+  
+    // ★ 依分類顯示：分類標題 + 底下品項
+    Object.keys(grouped)
+      .sort()                       // 分類排序：A013, A014...
+      .forEach(cat => {
+        // 分類標題（桌機版）
+        if (cat) {
+          const headerPC = document.createElement("div");
+          headerPC.className = "cart-category-title";
+          headerPC.textContent = cat;
+          cartListEl.appendChild(headerPC);
+  
+          // 分類標題（手機版）
+          const headerMobile = document.createElement("div");
+          headerMobile.className = "cart-category-title";
+          headerMobile.textContent = cat;
+          cartModalListEl.appendChild(headerMobile);
+        }
+  
+        // 該分類底下的所有品項
+        grouped[cat].forEach(item => {
+          // 桌機版
+          const pcElement = createCartItemElement(
+            item,
+            () => changeQty(item, -1),
+            () => changeQty(item, +1)
+          );
+          cartListEl.appendChild(pcElement);
+  
+          // 手機 modal 版
+          const mobileElement = createCartItemElement(
+            item,
+            () => changeQty(item, -1),
+            () => changeQty(item, +1)
+          );
+          cartModalListEl.appendChild(mobileElement);
+        });
+      });
+  
     const summaryHtml = `
       <div class="cart-summary-row">
         <span>小計</span>
@@ -841,7 +888,7 @@
     `;
     cartSummaryEl.innerHTML = summaryHtml;
     cartModalSummaryEl.innerHTML = summaryHtml;
-
+  
     checkoutBtn.disabled = false;
     cartModalCheckoutBtn.disabled = false;
   }
