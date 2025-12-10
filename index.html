@@ -472,10 +472,14 @@
       <textarea id="memberAddress" rows="2"></textarea>
     </div>
     <div class="field" id="deliveryRow">
-      <label for="deliveryTime">希望送達時間</label>
-      <!-- 年/月/日 + 時間 -->
-      <input id="deliveryTime" type="datetime-local" />
-    </div>
+      <label>希望送達時間</label>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input id="deliveryDate" type="date"
+               style="flex:1 1 120px; min-width:120px;" />
+        <select id="deliveryHour" style="flex:0 0 72px; min-width:72px;"></select>
+        <select id="deliveryMinute" style="flex:0 0 72px; min-width:72px;"></select>
+      </div>
+</div>
     <div class="modal-actions">
       <button class="btn-secondary" id="memberCancelBtn">取消</button>
       <button class="btn-primary" id="memberSaveBtn">儲存</button>
@@ -525,15 +529,16 @@
   const checkoutBtn = document.getElementById("checkoutBtn");
   const toastEl = document.getElementById("toast");
   const deliveryRow = document.getElementById("deliveryRow");
-
+  const deliveryDateInput = document.getElementById("deliveryDate");
+  const deliveryHourSelect = document.getElementById("deliveryHour");
+  const deliveryMinuteSelect = document.getElementById("deliveryMinute");
+  const memberButton = document.getElementById("memberButton");
+  const memberSaveBtn = document.getElementById("memberSaveBtn");
+  const memberCancelBtn = document.getElementById("memberCancelBtn");
   const memberModal = document.getElementById("memberModal");
   const memberNameInput = document.getElementById("memberName");
   const memberPhoneInput = document.getElementById("memberPhone");
   const memberAddressInput = document.getElementById("memberAddress");
-  const deliveryTimeInput = document.getElementById("deliveryTime");
-  const memberButton = document.getElementById("memberButton");
-  const memberSaveBtn = document.getElementById("memberSaveBtn");
-  const memberCancelBtn = document.getElementById("memberCancelBtn");
 
   // 手機購物車相關 DOM
   const cartFab = document.getElementById("cartFab");
@@ -546,23 +551,26 @@
 
   // ==== 工具 ====
 
-  // 點整個「希望送達時間」區塊都會觸發選擇器
-  deliveryRow.addEventListener("click", (e) => {
-    e.preventDefault();
-  
-    if (typeof deliveryTimeInput.showPicker === "function") {
-      // 支援 showPicker 的瀏覽器（Chrome / 新版 Edge 等）
-      deliveryTimeInput.showPicker();
-    } else {
-      // 其他瀏覽器就盡量模擬：先 focus 再觸發 click
-      deliveryTimeInput.focus();
-      deliveryTimeInput.click();
+  // 初始化送達時間的「小時 / 分鐘」選單
+  function initDeliveryTimeSelectors() {
+    // 小時 00~23
+    for (let h = 0; h < 24; h++) {
+      const opt = document.createElement("option");
+      const val = h.toString().padStart(2, "0");
+      opt.value = val;
+      opt.textContent = val;
+      deliveryHourSelect.appendChild(opt);
     }
-  });
-  deliveryTimeInput.addEventListener("blur", () => {
-    if (!deliveryTimeInput.value) return;
-    deliveryTimeInput.value = snapDatetimeLocalTo10Min(deliveryTimeInput.value);
-  });
+  
+    // 分鐘 00 / 10 / 20 / 30 / 40 / 50
+    [0, 10, 20, 30, 40, 50].forEach(m => {
+      const opt = document.createElement("option");
+      const val = m.toString().padStart(2, "0");
+      opt.value = val;
+      opt.textContent = val;
+      deliveryMinuteSelect.appendChild(opt);
+    });
+  }
 
 
   function showToast(msg) {
@@ -611,17 +619,28 @@
       if (fromCheckout) {
         deliveryRow.style.display = "block";
     
-        // 每次都預設成『現在』
+        // 預設成「現在」時間，分鐘對齊到 10 分鐘一格
         const now = new Date();
-        const tzOffset = now.getTimezoneOffset() * 60000;
-        const localISO = new Date(now - tzOffset).toISOString().slice(0, 16);
-        deliveryTimeInput.value = localISO;
+    
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+    
+        let hh = now.getHours();
+        let m = now.getMinutes();
+        m = Math.floor(m / 10) * 10;  // 0,10,20,30,40,50
+    
+        deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
+        deliveryHourSelect.value = String(hh).padStart(2, "0");
+        deliveryMinuteSelect.value = String(m).padStart(2, "0");
       } else {
+        // 從「會員資料」按鈕進來：不需要送達時間
         deliveryRow.style.display = "none";
       }
     
       memberModal.classList.add("show");
     }
+
 
     function closeMemberModal() {
       memberModal.classList.remove("show");
@@ -976,12 +995,20 @@
     }
   
     let deliveryTime = member.deliveryTime || "";
+  
+    // 從「送出訂單」流程進來，才需要日期 + 時間
     if (fromCheckout) {
-      deliveryTime = deliveryTimeInput.value;
-      if (!deliveryTime) {
+      const d = deliveryDateInput.value;
+      const h = deliveryHourSelect.value;
+      const m = deliveryMinuteSelect.value;
+  
+      if (!d || !h || !m) {
         showToast("請選擇送達日期與時間");
         return;
       }
+  
+      // 組成類似原本 datetime-local 的格式：YYYY-MM-DDTHH:MM
+      deliveryTime = `${d}T${h}:${m}`;
     }
   
     member = { name, phone, address, deliveryTime };
@@ -989,11 +1016,13 @@
     closeMemberModal();
   
     if (fromCheckout) {
+      // 直接送出訂單
       submitOrder();
     } else {
       showToast("會員資料已儲存");
     }
   });
+
 
 
 
@@ -1028,6 +1057,7 @@
   });
 
   // ==== 初始化 ====
+  initDeliveryTimeSelectors();  
   loadMemberFromStorage();
   loadMenu();
   renderCart(); // 初始化畫面
