@@ -659,8 +659,9 @@
 </div>
 <script>
   // ==== 設定你的 Apps Script Web App URL ====
-  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbwIitz8YhaRKSb0WT9rM9LlQzVZuCy-eRgGXlRFXCArGAhShVY-ikh6mUFvxs3nciAiiw/exec";
-
+  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbw59Oei6sWoLsbA9WB4_69gA6dKhX5isHDsBBdzTqPvCIZ7B2EkLsp-KiDno7A9FxIN7w/exec";
+  const MENU_URL  = `${API_BASE_URL}?mode=menu`;
+  const ORDER_URL = `${API_BASE_URL}?mode=checkout`;
   // ==== 狀態 ====
   let allItems = [];        // 從 Sheet 取得的品項原始資料
   let categories = [];      // 類別名稱陣列
@@ -808,7 +809,7 @@
 
   async function loadMenu() {
     try {
-      const resp = await fetch(API_BASE_URL);
+      const resp = await fetch(MENU_URL);
       const data = await resp.json();
       allItems = (data.items || []).filter(it => it.price != null);
   
@@ -1223,6 +1224,7 @@
     });
   
     const payload = {
+      mode: "checkout", 
       source: "WEB",
       customerName: member.name,
       customerPhone: member.phone,
@@ -1242,12 +1244,10 @@
     cartModalCheckoutBtn.textContent = "送出中…";
   
     try {
-      const resp = await fetch(API_BASE_URL, {
+            const resp = await fetch(ORDER_URL, {
         method: "POST",
-        // ✅ 用 text/plain 避免觸發 CORS preflight（GAS 常見坑）
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
-        redirect: "follow"
+        body: JSON.stringify(payload)
       });
   
       const text = await resp.text();
