@@ -659,7 +659,7 @@
 </div>
 <script>
   // ==== 設定你的 Apps Script Web App URL ====
-  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbw59Oei6sWoLsbA9WB4_69gA6dKhX5isHDsBBdzTqPvCIZ7B2EkLsp-KiDno7A9FxIN7w/exec";
+  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyQ7wJMInrPqeuGVdRY_O84yp6bmji9MEz1AjUlLli2Bh_IRhyCUlxlp_yd58X8ntGgJA/exec";
   const MENU_URL  = `${API_BASE_URL}?mode=menu`;
   const ORDER_URL = `${API_BASE_URL}?mode=checkout`;
   // ==== 狀態 ====
@@ -829,40 +829,6 @@
       console.error(err);
       showToast("載入菜單失敗，請稍後再試");
     }
-  }
-
-    function openSpecModal(productName, variants) {
-    specModalTitle.textContent = productName;
-    specModalList.innerHTML = "";
-  
-    variants.forEach(v => {
-      const stock = v.stock != null ? v.stock : 0;
-      const spec = (v.spec || "").trim();
-      const title = spec ? spec : "（無規格）";
-  
-      const row = document.createElement("div");
-      row.className = "spec-row" + (stock <= 0 ? " disabled" : "");
-  
-      row.innerHTML = `
-        <div class="spec-left">
-          <div class="spec-title">${escapeHtml(title)}</div>
-          <div class="spec-sub">庫存 ${stock}</div>
-        </div>
-        <div class="spec-price">$${v.price}</div>
-      `;
-  
-      if (stock > 0) {
-        row.onclick = () => {
-          // ✅ 點選加入購物車，但不關閉
-          addToCart(v);
-          showToast("已加入：" + productName + (spec ? `（${spec}）` : ""));
-        };
-      }
-  
-      specModalList.appendChild(row);
-    });
-  
-    specModal.classList.add("show");
   }
   
   function openSpecModal(productName, variants) {
@@ -1198,84 +1164,82 @@
 
   // 真正送出到 Apps Script
     async function submitOrder() {
-    if (!cart.length) {
-      showToast("請先選擇品項");
-      return;
-    }
-  
-    if (!member.name || !member.phone || !member.address) {
-      showToast("請先填寫會員資料");
-      openMemberModal(true, true);
-      return;
-    }
-  
-    let subtotal = 0;
-    const itemsPayload = cart.map(c => {
-      const lineTotal = c.price * c.quantity;
-      subtotal += lineTotal;
-      return {
-        category: c.category,
-        name: c.name,
-        spec: c.spec || "",          // ✅ 也把規格送出去（後端若要存）
-        price: c.price,
-        quantity: c.quantity,
-        lineTotal
+      if (!cart.length) {
+        showToast("請先選擇品項");
+        return;
+      }
+    
+      if (!member.name || !member.phone || !member.address) {
+        showToast("請先填寫會員資料");
+        openMemberModal(true, true);
+        return;
+      }
+    
+      let subtotal = 0;
+      const itemsPayload = cart.map(c => {
+        const lineTotal = c.price * c.quantity;
+        subtotal += lineTotal;
+        return {
+          category: c.category,
+          name: c.name,
+          spec: c.spec || "",          // ✅ 也把規格送出去（後端若要存）
+          price: c.price,
+          quantity: c.quantity,
+          lineTotal
+        };
+      });
+    
+      const payload = {
+        mode: "checkout", 
+        source: "WEB",
+        customerName: member.name,
+        customerPhone: member.phone,
+        customerAddress: member.address,
+        deliveryTime: member.deliveryTime,
+        items: itemsPayload,
+        subtotal,
+        discountType: "amount",
+        discountValue: 0,
+        discountAmount: 0,
+        total: subtotal
       };
-    });
-  
-    const payload = {
-      mode: "checkout", 
-      source: "WEB",
-      customerName: member.name,
-      customerPhone: member.phone,
-      customerAddress: member.address,
-      deliveryTime: member.deliveryTime,
-      items: itemsPayload,
-      subtotal,
-      discountType: "amount",
-      discountValue: 0,
-      discountAmount: 0,
-      total: subtotal
-    };
-  
-    checkoutBtn.disabled = true;
-    cartModalCheckoutBtn.disabled = true;
-    checkoutBtn.textContent = "送出中…";
-    cartModalCheckoutBtn.textContent = "送出中…";
-  
-    try {
-            const resp = await fetch(ORDER_URL, {
+    
+      checkoutBtn.disabled = true;
+      cartModalCheckoutBtn.disabled = true;
+      checkoutBtn.textContent = "送出中…";
+      cartModalCheckoutBtn.textContent = "送出中…";
+      try {
+      const resp = await fetch(API_BASE_URL, {   // ✅ 改：直接打 API_BASE_URL，不要帶 ?mode=checkout（body.mode 已經有）
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        redirect: "follow",
+        credentials: "omit",
+        headers: { "Content-Type": "text/plain" }, // ✅ 改：用 text/plain（不要加 charset 參數）
         body: JSON.stringify(payload)
       });
-  
+    
       const text = await resp.text();
       console.log("HTTP", resp.status, "raw response:", text);
-  
+    
       if (!resp.ok) {
         showToast(`送出失敗（HTTP ${resp.status}）`);
         return;
       }
-  
+    
       let data;
       try {
         data = JSON.parse(text);
-      } catch (e) {
-        // ✅ 99% 問題都在這：回來的是 HTML/文字，不是 JSON
-        const preview = (text || "").slice(0, 120);
-        showToast("回傳不是JSON：" + preview);
+      } catch {
+        showToast("回傳不是JSON：" + (text || "").slice(0, 120));
         return;
       }
-  
+    
       if (data.status === "ok") {
         showToast("訂單送出成功！訂單編號：" + (data.orderId || ""));
         cart = [];
         renderCart();
         cartModal.classList.remove("show");
       } else {
-        console.error("submitOrder failed:", err);
-        showToast("送出訂單失敗：" + (err?.message || err));        
+        showToast("送出失敗：" + (data.message || "未知錯誤"));
       }
     } catch (err) {
       console.error(err);
