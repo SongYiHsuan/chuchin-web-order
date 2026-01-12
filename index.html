@@ -1274,7 +1274,8 @@
         renderCart();
         cartModal.classList.remove("show");
       } else {
-        showToast("送出失敗：" + (data.message || "未知錯誤"));
+        console.error("submitOrder failed:", err);
+        showToast("送出訂單失敗：" + (err?.message || err));        
       }
     } catch (err) {
       console.error(err);
