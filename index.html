@@ -594,11 +594,12 @@
       object-fit: cover;
       display: block;
     }
-    
+    .item-thumb.empty {
+      color: #9ca3af;
+      font-size: 11px;
+    }
     .item-thumb.empty::after {
       content: "No Img";
-      font-size: 11px;
-      color: #9ca3af;
     }
   </style>
 </head>
@@ -997,7 +998,7 @@
         const totalStock = variants.reduce((s,v) => s + (v.stock ?? 0), 0);
     
         // ✅ 取一張代表縮圖：優先用有庫存的那個規格
-        const rep = variants.find(v => (v.stock ?? 0) > 0) || variants[0];
+        const rep = variants.find(v => getThumbUrl(v) || getLargeUrl(v)) || variants[0];
         const thumbUrl = getThumbUrl(rep);
         const largeUrl = getLargeUrl(rep);
     
