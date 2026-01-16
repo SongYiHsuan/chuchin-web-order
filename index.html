@@ -559,6 +559,47 @@
     .modal-backdrop.show {
       display: flex;
     }
+
+        /* ✅ 列表卡片：右側縮圖 */
+    .item-card {
+      flex-direction: row;             /* 原本 column → 改 row */
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .item-left {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .item-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      overflow: hidden;
+      flex: 0 0 auto;
+      border: 1px solid #eee;
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .item-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    
+    .item-thumb.empty::after {
+      content: "No Img";
+      font-size: 11px;
+      color: #9ca3af;
+    }
   </style>
 </head>
 <body>
@@ -708,7 +749,20 @@
   const cartModalCheckoutBtn = document.getElementById("cartModalCheckoutBtn");
 
   // ==== 工具 ====
-
+  // ✅ 從 variant 取得 thumb/large（支援多種欄位名）
+  function getThumbUrl(v){
+    return (v.thumb || v.thumbUrl || v.thumb_url || v.imageThumb || "").trim();
+  }
+  function getLargeUrl(v){
+    return (v.large || v.imageUrl || v.largeUrl || v.large_url || v.imageLarge || "").trim();
+  }
+  
+  // ✅ 點縮圖開啟大圖（有 large 用 large，沒有就用 thumb）
+  function openLargeFromVariant(v){
+    const url = getLargeUrl(v) || getThumbUrl(v);
+    if (!url) return;
+    window.open(url, "_blank");
+  }
   // 初始化送達時間的「小時 / 分鐘」選單
   function initDeliveryTimeSelectors() {
     // 小時 00~23
@@ -844,13 +898,23 @@
       row.className = "spec-row" + (stock <= 0 ? " disabled" : "");
   
       row.innerHTML = `
-        <div class="spec-left">
-          <div class="spec-title">${escapeHtml(title)}</div>
-          <div class="spec-sub">庫存 ${stock}</div>
-        </div>
+      <div class="spec-left">
+        <div class="spec-title">${escapeHtml(title)}</div>
+        <div class="spec-sub">庫存 ${stock}</div>
+      </div>
+    
+      <div style="display:flex; align-items:center; gap:12px;">
         <div class="spec-price">$${v.price}</div>
-      `;
-  
+    
+        <div class="item-thumb ${getThumbUrl(v) ? "" : " empty"}" style="width:54px;height:54px;">
+          ${
+            getThumbUrl(v)
+              ? `<img src="${getThumbUrl(v)}" alt="" loading="lazy">`
+              : ``
+          }
+        </div>
+      </div>
+    `;
       if (stock > 0) {
         row.onclick = () => {
           // ✅ 點選加入購物車，但不關閉
@@ -858,7 +922,13 @@
           showToast("已加入：" + productName + (spec ? `（${spec}）` : ""));
         };
       }
-  
+      const imgEl = row.querySelector(".item-thumb img");
+      if (imgEl) {
+        imgEl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openLargeFromVariant(v);
+        });
+      }
       specModalList.appendChild(row);
     });
   
@@ -898,69 +968,98 @@
       categoryListEl.appendChild(btn);
     });
   }
-  function renderItems() {
-    itemListEl.innerHTML = "";
-    const items = allItems.filter(it => {
-      if (!currentCategory) return true;
-      return it.category === currentCategory;
-    });
-  
-    if (!items.length) {
-      itemListEl.innerHTML = '<p style="font-size:13px;color:#777;">目前沒有品項</p>';
-      return;
+    function renderItems() {
+      itemListEl.innerHTML = "";
+      const items = allItems.filter(it => {
+        if (!currentCategory) return true;
+        return it.category === currentCategory;
+      });
+    
+      if (!items.length) {
+        itemListEl.innerHTML = '<p style="font-size:13px;color:#777;">目前沒有品項</p>';
+        return;
+      }
+    
+      // ✅ 依「品名」分組，做同名多規格
+      const grouped = {};
+      items.forEach(it => {
+        const name = it.item;
+        if (!grouped[name]) grouped[name] = [];
+        grouped[name].push(it);
+      });
+    
+      Object.keys(grouped).sort().forEach(name => {
+        const variants = grouped[name].slice().sort((a,b) => (a.spec||"").localeCompare(b.spec||""));
+        const hasMulti = variants.length > 1;
+    
+        // 最低價 & 總庫存（顯示用）
+        const minPrice = Math.min(...variants.map(v => v.price ?? 0));
+        const totalStock = variants.reduce((s,v) => s + (v.stock ?? 0), 0);
+    
+        // ✅ 取一張代表縮圖：優先用有庫存的那個規格
+        const rep = variants.find(v => (v.stock ?? 0) > 0) || variants[0];
+        const thumbUrl = getThumbUrl(rep);
+        const largeUrl = getLargeUrl(rep);
+    
+        const card = document.createElement("div");
+        card.className = "item-card";
+    
+        // 點卡片：多規格→開規格 modal；單規格→加入購物車
+        card.onclick = () => {
+          if (hasMulti) openSpecModal(name, variants);
+          else addToCart(variants[0]);
+        };
+    
+        // 左側文字區
+        const left = document.createElement("div");
+        left.className = "item-left";
+    
+        const nameEl = document.createElement("div");
+        nameEl.className = "item-name";
+        nameEl.textContent = name;
+    
+        const infoRow = document.createElement("div");
+        infoRow.className = "item-info";
+    
+        const priceEl = document.createElement("span");
+        priceEl.className = "item-price";
+        priceEl.textContent = hasMulti ? `起 $${minPrice}` : `$${minPrice}`;
+    
+        const stockEl = document.createElement("span");
+        stockEl.className = "item-stock";
+        stockEl.textContent = hasMulti ? `多規格｜總庫存 ${totalStock}` : `庫存 ${totalStock}`;
+    
+        infoRow.appendChild(priceEl);
+        infoRow.appendChild(stockEl);
+    
+        left.appendChild(nameEl);
+        left.appendChild(infoRow);
+    
+        // ✅ 右側縮圖
+        const thumbBox = document.createElement("div");
+        thumbBox.className = "item-thumb" + (thumbUrl ? "" : " empty");
+    
+        if (thumbUrl) {
+          const img = document.createElement("img");
+          img.src = thumbUrl;
+          img.alt = name;
+          img.loading = "lazy";
+    
+          // ✅ 點縮圖只開圖，不觸發加入購物車/開 modal
+          img.onclick = (e) => {
+            e.stopPropagation();
+            window.open(largeUrl || thumbUrl, "_blank");
+          };
+    
+          thumbBox.appendChild(img);
+        }
+    
+        card.appendChild(left);
+        card.appendChild(thumbBox);
+        itemListEl.appendChild(card);
+      });
     }
   
-    // ✅ 依「品名」分組，做同名多規格
-    const grouped = {};
-    items.forEach(it => {
-      const name = it.item;
-      if (!grouped[name]) grouped[name] = [];
-      grouped[name].push(it);
-    });
-  
-    Object.keys(grouped).sort().forEach(name => {
-      const variants = grouped[name].slice().sort((a,b) => (a.spec||"").localeCompare(b.spec||""));
-      const hasMulti = variants.length > 1;
-  
-      // 最低價 & 總庫存（顯示用）
-      const minPrice = Math.min(...variants.map(v => v.price ?? 0));
-      const totalStock = variants.reduce((s,v) => s + (v.stock ?? 0), 0);
-  
-      const card = document.createElement("div");
-      card.className = "item-card";
-  
-      card.onclick = () => {
-        if (hasMulti) {
-          openSpecModal(name, variants);
-        } else {
-          addToCart(variants[0]);
-        }
-      };
-  
-      const nameEl = document.createElement("div");
-      nameEl.className = "item-name";
-      nameEl.textContent = name;
-  
-      const infoRow = document.createElement("div");
-      infoRow.className = "item-info";
-  
-      const priceEl = document.createElement("span");
-      priceEl.className = "item-price";
-      priceEl.textContent = hasMulti ? `起 $${minPrice}` : `$${minPrice}`;
-  
-      const stockEl = document.createElement("span");
-      stockEl.className = "item-stock";
-      stockEl.textContent = hasMulti ? `多規格｜總庫存 ${totalStock}` : `庫存 ${totalStock}`;
-  
-      infoRow.appendChild(priceEl);
-      infoRow.appendChild(stockEl);
-  
-      card.appendChild(nameEl);
-      card.appendChild(infoRow);
-      itemListEl.appendChild(card);
-    });
-  }
-
   function createCartItemElement(item, onMinus, onPlus) {
     const container = document.createElement("div");
     container.className = "cart-item";
