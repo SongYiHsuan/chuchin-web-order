@@ -824,6 +824,12 @@
   const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzg6XE-F_5b8Vk5met2gd4CjM2r8EHkYg-QbqT3zWOLLH09qJzorE1Wv9MasTPkxPJTpg/exec";
   const MENU_URL  = `${API_BASE_URL}?mode=menu`;
 
+  // ✅【新增】網址帶 ?member=1 視為「會員註冊送出（0元訂單）」模式
+  const IS_MEMBER_REGISTER_FLOW = (() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("member") === "1" || window.location.hash === "#member";
+  })();
+
   // ===== 運費設定 =====
   const SHIPPING_THRESHOLD = 500;
   const SHIPPING_FEE = 50;
@@ -1016,8 +1022,18 @@
       memberModal.dataset.checkout = fromCheckout ? "1" : "0";
     
       // 依來源切換按鈕文字
-      memberSaveBtn.textContent = fromCheckout ? "確認訂單送出" : "儲存";
+      memberModal.dataset.checkout = fromCheckout ? "1" : "0";
     
+      // ✅【新增】標記是否為「會員註冊送出（0元訂單）」模式
+      // 條件：不是結帳流程 + 網址是 ?member=1
+      const isRegister = (!fromCheckout && IS_MEMBER_REGISTER_FLOW);
+      memberModal.dataset.register = isRegister ? "1" : "0";
+    
+      // ✅【修改】按鈕文字
+      memberSaveBtn.textContent = fromCheckout
+        ? "確認訂單送出"
+        : (isRegister ? "送出註冊" : "儲存");
+        
       if (fromCheckout) {
         deliveryRow.style.display = "block";
     
@@ -1546,7 +1562,88 @@ function renderCart() {
       // 有填過就給他看一次確認，沒填過就強制填寫
       openMemberModal(!hasMember, true);
     }
+
+    // ✅【新增】會員註冊：送出 0 元訂單到 Google Sheet（品項摘要：會員註冊）
+    async function submitMemberRegisterOrder() {
+      if (!member.name || !member.phone || !member.address) {
+        showToast("請先填寫會員資料");
+        return;
+      }
+
+      // 0 元註冊訂單：用一個 0 元品項，讓後端的摘要可形成「會員註冊」
+      const itemsPayload = [{
+        category: "會員",
+        name: "會員註冊",
+        spec: "",
+        price: 0,
+        quantity: 1,
+        lineTotal: 0
+      }];
   
+      const payload = {
+        mode: "checkout",
+        source: "WEB",
+        customerName: member.name,
+        customerPhone: member.phone,
+        customerAddress: member.address,
+        deliveryTime: "",
+  
+        items: itemsPayload,
+        subtotal: 0,
+        discountType: "amount",
+        discountValue: 0,
+        discountAmount: 0,
+  
+        // ✅【關鍵】總計 0
+        total: 0,
+  
+        // ✅【可選】如果你後端有欄位：運費/總計（你前面有做 shipping）
+        shippingFee: 0
+      };
+  
+      // UI 提示（避免重複送）
+      memberSaveBtn.disabled = true;
+      const oldText = memberSaveBtn.textContent;
+      memberSaveBtn.textContent = "送出中…";
+  
+      try {
+        const resp = await fetch(API_BASE_URL, {
+          method: "POST",
+          redirect: "follow",
+          credentials: "omit",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(payload)
+        });
+  
+        const text = await resp.text();
+        if (!resp.ok) {
+          showToast(`註冊送出失敗（HTTP ${resp.status}）`);
+          console.log("register raw:", text);
+          return;
+        }
+  
+        let data;
+        try { data = JSON.parse(text); }
+        catch {
+          showToast("回傳不是JSON：" + (text || "").slice(0, 120));
+          console.log("register raw:", text);
+          return;
+        }
+  
+        if (data.status === "ok") {
+          showToast("會員註冊已送出 ✅");
+        } else {
+          showToast("註冊送出失敗：" + (data.message || "未知錯誤"));
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("註冊送出失敗：" + (err?.message || "network error"));
+      } finally {
+        memberSaveBtn.disabled = false;
+        memberSaveBtn.textContent = oldText;
+      }
+    }
+
     // 真正送出到 Apps Script
       async function submitOrder() {
         if (!cart.length) {
@@ -1700,10 +1797,15 @@ function renderCart() {
     member = { name, phone, address, deliveryTime };
     saveMemberToStorage();
     closeMemberModal();
-  
+
+    const isRegister = memberModal.dataset.register === "1";
+
     if (fromCheckout) {
       // 直接送出訂單
       submitOrder();
+    } else if (isRegister) {
+      // ✅【新增】註冊模式 → 送出 0 元訂單到 Google Sheet
+      submitMemberRegisterOrder();
     } else {
       showToast("會員資料已儲存");
     }
