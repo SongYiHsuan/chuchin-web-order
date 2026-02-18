@@ -824,7 +824,12 @@
   // ==== 設定你的 Apps Script Web App URL ====
   const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzg6XE-F_5b8Vk5met2gd4CjM2r8EHkYg-QbqT3zWOLLH09qJzorE1Wv9MasTPkxPJTpg/exec";
   const MENU_URL  = `${API_BASE_URL}?mode=menu`;
-  const ORDER_URL = `${API_BASE_URL}?mode=checkout`;
+
+  // ===== 運費設定 =====
+  const SHIPPING_THRESHOLD = 500;
+  const SHIPPING_FEE = 50;
+  const SHIPPING_KEY = "__SHIPPING__"; // 購物車內運費項目的唯一 key
+
   // ==== 狀態 ====
   let allItems = [];        // 從 Sheet 取得的品項原始資料
   let categories = [];      // 類別名稱陣列
@@ -1246,70 +1251,93 @@
       });
     }
   
-  function createCartItemElement(item, onMinus, onPlus) {
+function createCartItemElement(item, onMinus, onPlus) {
     const container = document.createElement("div");
     container.className = "cart-item";
-
+  
     const topRow = document.createElement("div");
     topRow.className = "cart-top-row";
-
+  
     const nameEl = document.createElement("div");
     nameEl.className = "cart-name";
     nameEl.textContent = item.spec ? `${item.name}（${item.spec}）` : item.name;
-
+  
     const lineTotalEl = document.createElement("div");
     lineTotalEl.className = "cart-line-total";
     lineTotalEl.textContent = `$${item.price * item.quantity}`;
-
+  
     topRow.appendChild(nameEl);
     topRow.appendChild(lineTotalEl);
-
+  
     const bottomRow = document.createElement("div");
     bottomRow.className = "cart-bottom-row";
-
+  
     const priceInfo = document.createElement("span");
     priceInfo.style.fontSize = "12px";
     priceInfo.textContent = `單價 $${item.price}`;
-
+  
+    // ✅【改這裡】判斷是不是運費
+    const isShipping = item.key === SHIPPING_KEY || item.isShipping;
+  
     const qtyControl = document.createElement("div");
     qtyControl.className = "qty-control";
-
-    const minusBtn = document.createElement("button");
-    minusBtn.className = "qty-btn";
-    minusBtn.textContent = "-";
-    minusBtn.onclick = onMinus;
-
-    const qtyVal = document.createElement("span");
-    qtyVal.className = "qty-value";
-    qtyVal.textContent = item.quantity;
-
-    const plusBtn = document.createElement("button");
-    plusBtn.className = "qty-btn";
-    plusBtn.textContent = "+";
-    plusBtn.onclick = onPlus;
-
-    if (item.quantity >= item.stock) {
-      plusBtn.disabled = true;
-      plusBtn.style.opacity = 0.4;
+  
+    if (isShipping) {
+      // ✅【改這裡】運費：固定 1，不給 +/-，只顯示「固定」
+      const fixed = document.createElement("span");
+      fixed.style.fontSize = "12px";
+      fixed.style.color = "#666";
+      fixed.textContent = "固定";
+      qtyControl.appendChild(fixed);
+    } else {
+      // ✅ 一般商品才有 +/- 控制
+      const minusBtn = document.createElement("button");
+      minusBtn.className = "qty-btn";
+      minusBtn.textContent = "-";
+      minusBtn.onclick = onMinus;
+  
+      const qtyVal = document.createElement("span");
+      qtyVal.className = "qty-value";
+      qtyVal.textContent = item.quantity;
+  
+      const plusBtn = document.createElement("button");
+      plusBtn.className = "qty-btn";
+      plusBtn.textContent = "+";
+      plusBtn.onclick = onPlus;
+  
+      if (item.quantity >= item.stock) {
+        plusBtn.disabled = true;
+        plusBtn.style.opacity = 0.4;
+      }
+  
+      qtyControl.appendChild(minusBtn);
+      qtyControl.appendChild(qtyVal);
+      qtyControl.appendChild(plusBtn);
     }
-
-    qtyControl.appendChild(minusBtn);
-    qtyControl.appendChild(qtyVal);
-    qtyControl.appendChild(plusBtn);
-
+  
     bottomRow.appendChild(priceInfo);
     bottomRow.appendChild(qtyControl);
-
+  
     container.appendChild(topRow);
     container.appendChild(bottomRow);
-
+  
     return container;
   }
-
-  function renderCart() {
+  
+function renderCart() {
+    // ✅ 每次重畫先同步運費（會自動加/移除）
+    syncShippingItem();
+  
     cartListEl.innerHTML = "";
     cartModalListEl.innerHTML = "";
   
+    // ✅ 若購物車只剩運費（理論上不會，但保險）
+    const hasRealItems = cart.some(i => i.key !== SHIPPING_KEY);
+    if (!hasRealItems) {
+      cart = cart.filter(i => i.key !== SHIPPING_KEY);
+    }
+  
+    // ✅ 空購物車狀態
     if (!cart.length) {
       const emptyHtml = '<div class="cart-empty">尚未選擇品項</div>';
       cartListEl.innerHTML = emptyHtml;
@@ -1322,12 +1350,23 @@
       return;
     }
   
-    // 小計
-    let subtotal = 0;
-    cart.forEach(c => subtotal += c.price * c.quantity);
-    cartFabCount.textContent = String(cart.length);
+    // ✅ 商品小計（不含運費）
+    const goodsSubtotal = cart
+      .filter(i => i.key !== SHIPPING_KEY)
+      .reduce((s, i) => s + (i.price * i.quantity), 0);
   
-    // ★ 依分類分組：{ "A013": [item1, item2...], "A014": [...] }
+    // ✅ 運費金額（0 或 50）
+    const shipping = cart
+      .filter(i => i.key === SHIPPING_KEY)
+      .reduce((s, i) => s + (i.price * i.quantity), 0);
+  
+    // ✅ 總計
+    const total = goodsSubtotal + shipping;
+  
+    // ✅ 右下角數字：只算商品數（不含運費）
+    cartFabCount.textContent = String(cart.filter(i => i.key !== SHIPPING_KEY).length);
+  
+    // ✅ 依分類分組（包含運費 → category="運費" 會自己成一群）
     const grouped = {};
     cart.forEach(item => {
       const cat = item.category || "";
@@ -1335,50 +1374,76 @@
       grouped[cat].push(item);
     });
   
-    // ★ 依分類顯示：分類標題 + 底下品項
-    Object.keys(grouped)
-      .sort()                       // 分類排序：A013, A014...
-      .forEach(cat => {
-        // 分類標題（桌機版）
-        if (cat) {
-          const headerPC = document.createElement("div");
-          headerPC.className = "cart-category-title";
-          headerPC.textContent = cat;
-          cartListEl.appendChild(headerPC);
+    // ✅ 排序：一般分類照字母排序，但「運費」永遠放最後
+    const cats = Object.keys(grouped).sort((a, b) => {
+      if (a === "運費") return 1;
+      if (b === "運費") return -1;
+      return a.localeCompare(b);
+    });
   
-          // 分類標題（手機版）
-          const headerMobile = document.createElement("div");
-          headerMobile.className = "cart-category-title";
-          headerMobile.textContent = cat;
-          cartModalListEl.appendChild(headerMobile);
-        }
+    // ✅ 依分類輸出：分類標題 + 底下品項（桌機 + 手機）
+    cats.forEach(cat => {
+      if (cat) {
+        // 桌機分類標題
+        const headerPC = document.createElement("div");
+        headerPC.className = "cart-category-title";
+        headerPC.textContent = cat;
+        cartListEl.appendChild(headerPC);
   
-        // 該分類底下的所有品項
-        grouped[cat].forEach(item => {
-          // 桌機版
-          const pcElement = createCartItemElement(
-            item,
-            () => changeQty(item, -1),
-            () => changeQty(item, +1)
-          );
-          cartListEl.appendChild(pcElement);
+        // 手機分類標題
+        const headerMobile = document.createElement("div");
+        headerMobile.className = "cart-category-title";
+        headerMobile.textContent = cat;
+        cartModalListEl.appendChild(headerMobile);
+      }
   
-          // 手機 modal 版
-          const mobileElement = createCartItemElement(
-            item,
-            () => changeQty(item, -1),
-            () => changeQty(item, +1)
-          );
-          cartModalListEl.appendChild(mobileElement);
-        });
+      grouped[cat].forEach(item => {
+        // 運費項目：不給 +-（在 createCartItemElement 內處理）
+        const pcElement = createCartItemElement(
+          item,
+          () => changeQty(item, -1),
+          () => changeQty(item, +1)
+        );
+        cartListEl.appendChild(pcElement);
+  
+        const mobileElement = createCartItemElement(
+          item,
+          () => changeQty(item, -1),
+          () => changeQty(item, +1)
+        );
+        cartModalListEl.appendChild(mobileElement);
       });
+    });
+  
+    // ✅ Summary 顯示：商品小計 / 運費 / 總計 + 提示文
+    const needShippingHint = goodsSubtotal > 0 && goodsSubtotal < SHIPPING_THRESHOLD;
+    const remain = Math.max(0, SHIPPING_THRESHOLD - goodsSubtotal);
   
     const summaryHtml = `
       <div class="cart-summary-row">
-        <span>小計</span>
-        <span><strong>$${subtotal}</strong></span>
+        <span>商品小計</span>
+        <span><strong>$${goodsSubtotal}</strong></span>
       </div>
+      <div class="cart-summary-row">
+        <span>運費</span>
+        <span><strong>$${shipping}</strong></span>
+      </div>
+      <div class="cart-summary-row" style="margin-top:6px;">
+        <span>總計</span>
+        <span><strong>$${total}</strong></span>
+      </div>
+      ${
+        needShippingHint
+          ? `<div style="margin-top:8px;font-size:12px;color:#666;">
+               未滿 $${SHIPPING_THRESHOLD} 需加運費 $${SHIPPING_FEE}，
+               再買 <strong>$${remain}</strong> 免運
+             </div>`
+          : (goodsSubtotal >= SHIPPING_THRESHOLD
+              ? `<div style="margin-top:8px;font-size:12px;color:#666;">已達免運門檻</div>`
+              : ``)
+      }
     `;
+  
     cartSummaryEl.innerHTML = summaryHtml;
     cartModalSummaryEl.innerHTML = summaryHtml;
   
@@ -1386,156 +1451,208 @@
     cartModalCheckoutBtn.disabled = false;
   }
 
-  // ==== 購物車操作 ====
 
-  function addToCart(item) {
-    const stock = item.stock != null ? item.stock : 0;
-    if (stock <= 0) {
-      showToast("此品項庫存不足");
-      return;
+  function syncShippingItem() {
+    // 小計：只算一般商品（排除運費）
+    const subtotalWithoutShipping = cart
+      .filter(i => i.key !== SHIPPING_KEY)
+      .reduce((s, i) => s + (i.price * i.quantity), 0);
+  
+    const needShipping = subtotalWithoutShipping > 0 && subtotalWithoutShipping < SHIPPING_THRESHOLD;
+  
+    const idx = cart.findIndex(i => i.key === SHIPPING_KEY);
+  
+    if (needShipping) {
+      if (idx === -1) {
+        cart.push({
+          key: SHIPPING_KEY,
+          category: "運費",
+          name: "運費",
+          spec: "",
+          price: SHIPPING_FEE,
+          stock: 999999,
+          quantity: 1,
+          isShipping: true
+        });
+      } else {
+        // 保險：確保運費固定 1 份、固定金額
+        cart[idx].price = SHIPPING_FEE;
+        cart[idx].quantity = 1;
+        cart[idx].isShipping = true;
+      }
+    } else {
+      if (idx !== -1) cart.splice(idx, 1);
     }
-  const spec = (item.spec || "").trim();
-  const key = item.category + "||" + item.item + "||" + spec;
-  const existing = cart.find(c => c.key === key);
-
-
-    if (existing) {
-      if (existing.quantity >= existing.stock) {
-        showToast("已達庫存上限");
+  }
+  
+    // ==== 購物車操作 ====
+  
+    function addToCart(item) {
+      const stock = item.stock != null ? item.stock : 0;
+      if (stock <= 0) {
+        showToast("此品項庫存不足");
         return;
       }
-      existing.quantity += 1;
-    } else {
-      cart.push({
-        key,
-        category: item.category,
-        name: item.item,
-        spec: spec,
-        price: item.price,
-        stock: stock,
-        quantity: 1
-      });
+    const spec = (item.spec || "").trim();
+    const key = item.category + "||" + item.item + "||" + spec;
+    const existing = cart.find(c => c.key === key);
+  
+  
+      if (existing) {
+        if (existing.quantity >= existing.stock) {
+          showToast("已達庫存上限");
+          return;
+        }
+        existing.quantity += 1;
+      } else {
+        cart.push({
+          key,
+          category: item.category,
+          name: item.item,
+          spec: spec,
+          price: item.price,
+          stock: stock,
+          quantity: 1
+        });
+      }
+      syncShippingItem();
+      renderCart();
     }
-    renderCart();
-  }
-
-  function changeQty(cartItem, delta) {
-    const idx = cart.findIndex(c => c.key === cartItem.key);
-    if (idx === -1) return;
-    const item = cart[idx];
-    const newQty = item.quantity + delta;
-    if (newQty <= 0) {
-      cart.splice(idx, 1);
-    } else if (newQty > item.stock) {
-      showToast("已達庫存上限");
-      return;
-    } else {
-      item.quantity = newQty;
+  
+    function changeQty(cartItem, delta) {
+      const idx = cart.findIndex(c => c.key === cartItem.key);
+      if (idx === -1) return;
+      const item = cart[idx];
+      const newQty = item.quantity + delta;
+      if (newQty <= 0) {
+        cart.splice(idx, 1);
+      } else if (newQty > item.stock) {
+        showToast("已達庫存上限");
+        return;
+      } else {
+        item.quantity = newQty;
+      }
+      syncShippingItem();
+      renderCart();
     }
-    renderCart();
-  }
-
-  // ==== 結帳流程：先開會員視窗，再真正送單 ====
-
-  function startCheckout() {
-    if (!cart.length) {
-      showToast("請先選擇品項");
-      return;
-    }
-    const hasMember = member.name && member.phone && member.address;
-    // 有填過就給他看一次確認，沒填過就強制填寫
-    openMemberModal(!hasMember, true);
-  }
-
-  // 真正送出到 Apps Script
-    async function submitOrder() {
+  
+    // ==== 結帳流程：先開會員視窗，再真正送單 ====
+  
+    function startCheckout() {
       if (!cart.length) {
         showToast("請先選擇品項");
         return;
       }
-    
-      if (!member.name || !member.phone || !member.address) {
-        showToast("請先填寫會員資料");
-        openMemberModal(true, true);
-        return;
-      }
-    
-      let subtotal = 0;
-      const itemsPayload = cart.map(c => {
-        const lineTotal = c.price * c.quantity;
-        subtotal += lineTotal;
-        return {
-          category: c.category,
-          name: c.name,
-          spec: c.spec || "",          // ✅ 也把規格送出去（後端若要存）
-          price: c.price,
-          quantity: c.quantity,
-          lineTotal
-        };
-      });
-    
-      const payload = {
-        mode: "checkout", 
-        source: "WEB",
-        customerName: member.name,
-        customerPhone: member.phone,
-        customerAddress: member.address,
-        deliveryTime: member.deliveryTime,
-        items: itemsPayload,
-        subtotal,
-        discountType: "amount",
-        discountValue: 0,
-        discountAmount: 0,
-        total: subtotal
-      };
-    
-      checkoutBtn.disabled = true;
-      cartModalCheckoutBtn.disabled = true;
-      checkoutBtn.textContent = "送出中…";
-      cartModalCheckoutBtn.textContent = "送出中…";
-      try {
-      const resp = await fetch(API_BASE_URL, {   // ✅ 改：直接打 API_BASE_URL，不要帶 ?mode=checkout（body.mode 已經有）
-        method: "POST",
-        redirect: "follow",
-        credentials: "omit",
-        headers: { "Content-Type": "text/plain" }, // ✅ 改：用 text/plain（不要加 charset 參數）
-        body: JSON.stringify(payload)
-      });
-    
-      const text = await resp.text();
-      console.log("HTTP", resp.status, "raw response:", text);
-    
-      if (!resp.ok) {
-        showToast(`送出失敗（HTTP ${resp.status}）`);
-        return;
-      }
-    
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        showToast("回傳不是JSON：" + (text || "").slice(0, 120));
-        return;
-      }
-    
-      if (data.status === "ok") {
-        showToast("訂單送出成功！訂單編號：" + (data.orderId || ""));
-        cart = [];
-        renderCart();
-        cartModal.classList.remove("show");
-      } else {
-        showToast("送出失敗：" + (data.message || "未知錯誤"));
-      }
-    } catch (err) {
-      console.error(err);
-      showToast("送出訂單失敗：" + (err?.message || "network error"));
-    } finally {
-      checkoutBtn.disabled = !cart.length;
-      cartModalCheckoutBtn.disabled = !cart.length;
-      checkoutBtn.textContent = "送出訂單";
-      cartModalCheckoutBtn.textContent = "送出訂單";
+      const hasMember = member.name && member.phone && member.address;
+      // 有填過就給他看一次確認，沒填過就強制填寫
+      openMemberModal(!hasMember, true);
     }
-  }
+  
+    // 真正送出到 Apps Script
+      async function submitOrder() {
+        if (!cart.length) {
+          showToast("請先選擇品項");
+          return;
+        }
+      
+        if (!member.name || !member.phone || !member.address) {
+          showToast("請先填寫會員資料");
+          openMemberModal(true, true);
+          return;
+        }
+      
+        let subtotal = 0;
+        
+        // ✅ 商品 items（排除運費）
+        const itemsPayload = cart
+          .filter(c => c.key !== SHIPPING_KEY)
+          .map(c => {
+            const lineTotal = c.price * c.quantity;
+            subtotal += lineTotal;
+            return {
+              category: c.category,
+              name: c.name,
+              spec: c.spec || "",
+              price: c.price,
+              quantity: c.quantity,
+              lineTotal
+            };
+          });
+        
+        // ✅ 運費（購物車若有運費項目就算 50，沒有就 0）
+        const shippingFee = cart.some(c => c.key === SHIPPING_KEY) ? SHIPPING_FEE : 0;
+        
+        // ✅ 總計
+        const total = subtotal + shippingFee;
+        
+        const payload = {
+          mode: "checkout",
+          source: "WEB",
+          customerName: member.name,
+          customerPhone: member.phone,
+          customerAddress: member.address,
+          deliveryTime: member.deliveryTime,
+        
+          items: itemsPayload,
+        
+          subtotal,        // 商品小計（不含運費）
+          shippingFee,     // 運費
+          total,           // 總計（含運費）
+        
+          // 你要保留折扣欄位也可以
+          discountType: "amount",
+          discountValue: 0,
+          discountAmount: 0
+        };
+
+      
+        checkoutBtn.disabled = true;
+        cartModalCheckoutBtn.disabled = true;
+        checkoutBtn.textContent = "送出中…";
+        cartModalCheckoutBtn.textContent = "送出中…";
+        try {
+        const resp = await fetch(API_BASE_URL, {   // ✅ 改：直接打 API_BASE_URL，不要帶 ?mode=checkout（body.mode 已經有）
+          method: "POST",
+          redirect: "follow",
+          credentials: "omit",
+          headers: { "Content-Type": "text/plain" }, // ✅ 改：用 text/plain（不要加 charset 參數）
+          body: JSON.stringify(payload)
+        });
+      
+        const text = await resp.text();
+        console.log("HTTP", resp.status, "raw response:", text);
+      
+        if (!resp.ok) {
+          showToast(`送出失敗（HTTP ${resp.status}）`);
+          return;
+        }
+      
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          showToast("回傳不是JSON：" + (text || "").slice(0, 120));
+          return;
+        }
+      
+        if (data.status === "ok") {
+          showToast("訂單送出成功！訂單編號：" + (data.orderId || ""));
+          cart = [];
+          renderCart();
+          cartModal.classList.remove("show");
+        } else {
+          showToast("送出失敗：" + (data.message || "未知錯誤"));
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("送出訂單失敗：" + (err?.message || "network error"));
+      } finally {
+        checkoutBtn.disabled = !cart.length;
+        cartModalCheckoutBtn.disabled = !cart.length;
+        checkoutBtn.textContent = "送出訂單";
+        cartModalCheckoutBtn.textContent = "送出訂單";
+      }
+    }
 
   // ==== 事件註冊 ====（公告）
   if (noticeCloseBtn) noticeCloseBtn.addEventListener("click", closeNoticeModal);
