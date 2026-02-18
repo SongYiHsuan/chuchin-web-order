@@ -689,6 +689,7 @@
     .item-thumb.empty::after {
       content: "No Img";
     }
+    #noticeModal { z-index: 60; }
   </style>
 </head>
 <body>
@@ -785,6 +786,38 @@
       <button class="spec-close" id="specModalCloseBtn">關閉</button>
     </div>
     <div class="spec-list" id="specModalList"></div>
+  </div>
+</div>
+  <div class="modal-backdrop" id="noticeModal" aria-hidden="true">
+  <div class="modal notice-modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
+    <div class="notice-header">
+      <h2 id="noticeTitle">批發公告</h2>
+      <button class="notice-close" id="noticeCloseBtn" aria-label="關閉">✕</button>
+    </div>
+
+    <div class="notice-body">
+      <p>21:00後訂單為隔日發送</p>
+      <p>需匯款之用戶需收到款項後才出貨</p>
+      <p>（楠梓、大社、仁武、大寮、小港較遠之地區運費再討論）</p>
+
+      <p><strong>！！所有商品保固起算時間一出貨日期！！</strong></p>
+      <p><strong>！！所有商品保固範圍接不包含人損！！</strong></p>
+
+      <p>液晶防拆貼破損視為上機</p>
+      <p>裝機保固觸摸問題三個月，有觸控問題之螢幕需提供裸測影片私訊官方帳號</p>
+      <p>確保拆機過程沒有造成總成其他損害</p>
+
+      <p>電池售後保固六個月（需保持外觀完整，如有破損需補貼價差一半）</p>
+      <p>電芯售出後不保不退</p>
+    </div>
+
+    <div class="notice-actions">
+      <label class="notice-checkbox">
+        <input type="checkbox" id="noticeHideToday" />
+        <span>今天不要再顯示</span>
+      </label>
+      <button class="btn-primary" id="noticeOkBtn">我知道了</button>
+    </div>
   </div>
 </div>
 <script>
@@ -1504,16 +1537,16 @@
     }
   }
 
-
-  // ==== 事件註冊 ====
-
-  noticeCloseBtn.addEventListener("click", closeNoticeModal);
-  noticeOkBtn.addEventListener("click", closeNoticeModal);
+  // ==== 事件註冊 ====（公告）
+  if (noticeCloseBtn) noticeCloseBtn.addEventListener("click", closeNoticeModal);
+  if (noticeOkBtn) noticeOkBtn.addEventListener("click", closeNoticeModal);
   
-  // 點背景也可關閉（可選）
-  noticeModal.addEventListener("click", (e) => {
-    if (e.target === noticeModal) closeNoticeModal();
-  });
+  if (noticeModal) {
+    noticeModal.addEventListener("click", (e) => {
+      if (e.target === noticeModal) closeNoticeModal();
+    });
+  }
+
 
 
   // 上方「會員資料」按鈕：單純開資料視窗，不送單
@@ -1601,37 +1634,5 @@
   autoOpenMemberModalFromURL();
   if (shouldShowNotice()) openNoticeModal();
 </script>
-  <div class="modal-backdrop" id="noticeModal" aria-hidden="true">
-    <div class="modal notice-modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
-      <div class="notice-header">
-        <h2 id="noticeTitle">批發公告</h2>
-        <button class="notice-close" id="noticeCloseBtn" aria-label="關閉">✕</button>
-      </div>
-  
-      <div class="notice-body">
-        <p>21:00後訂單為隔日發送</p>
-        <p>需匯款之用戶需收到款項後才出貨</p>
-        <p>（楠梓、大社、仁武、大寮、小港較遠之地區運費再討論）</p>
-  
-        <p><strong>！！所有商品保固起算時間一出貨日期！！</strong></p>
-        <p><strong>！！所有商品保固範圍接不包含人損！！</strong></p>
-  
-        <p>液晶防拆貼破損視為上機</p>
-        <p>裝機保固觸摸問題三個月，有觸控問題之螢幕需提供裸測影片私訊官方帳號</p>
-        <p>確保拆機過程沒有造成總成其他損害</p>
-  
-        <p>電池售後保固六個月（需保持外觀完整，如有破損需補貼價差一半）</p>
-        <p>電芯售出後不保不退</p>
-      </div>
-  
-      <div class="notice-actions">
-        <label class="notice-checkbox">
-          <input type="checkbox" id="noticeHideToday" />
-          <span>今天不要再顯示</span>
-        </label>
-        <button class="btn-primary" id="noticeOkBtn">我知道了</button>
-      </div>
-    </div>
-  </div>
 </body>
 </html>
