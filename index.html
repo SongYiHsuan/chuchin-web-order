@@ -8,6 +8,98 @@
   <link rel="apple-touch-icon" href="./logo.png?v=1">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    /* ===== 批發公告 Modal（自適應）===== */
+    .modal.notice-modal {
+      width: min(92vw, 640px);
+      max-width: 640px;
+      padding: 0;
+      overflow: hidden;
+      border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.22);
+    }
+    
+    .notice-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .notice-header h2 {
+      font-size: 18px;
+      font-weight: 800;
+      margin: 0;
+      flex: 1;
+    }
+    
+    .notice-close {
+      border: none;
+      background: transparent;
+      font-size: 18px;
+      font-weight: 900;
+      color: #2253a0;
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 10px;
+    }
+    
+    .notice-close:hover {
+      background: #f2f6ff;
+    }
+    
+    .notice-body {
+      padding: 14px 16px;
+      background: #fff;
+      max-height: min(62vh, 520px);
+      overflow: auto;
+      line-height: 1.6;
+      font-size: 14px;
+      color: #111;
+    }
+    
+    .notice-body p {
+      margin: 0 0 10px 0;
+      color: #111;
+    }
+    
+    .notice-body strong {
+      color: #b91c1c; /* 重點紅字 */
+    }
+    
+    .notice-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 16px;
+      background: #fff;
+      border-top: 1px solid #eee;
+    }
+    
+    .notice-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #333;
+      user-select: none;
+    }
+    
+    .notice-checkbox input {
+      width: 16px;
+      height: 16px;
+    }
+    
+    /* 小螢幕再縮一點 */
+    @media (max-width: 420px) {
+      .notice-header h2 { font-size: 16px; }
+      .notice-body { font-size: 13px; }
+      .notice-actions { flex-direction: column; align-items: stretch; }
+      .notice-actions .btn-primary { width: 100%; }
+    }
+
     html, body {
       height: 100%;
     }
@@ -752,6 +844,40 @@
   const cartModalCloseBtn = document.getElementById("cartModalCloseBtn");
   const cartModalCheckoutBtn = document.getElementById("cartModalCheckoutBtn");
 
+  // 公告 Modal DOM
+  const noticeModal = document.getElementById("noticeModal");
+  const noticeCloseBtn = document.getElementById("noticeCloseBtn");
+  const noticeOkBtn = document.getElementById("noticeOkBtn");
+  const noticeHideToday = document.getElementById("noticeHideToday");
+  
+  const NOTICE_KEY = "wholesaleNoticeHideUntil"; // 存到 localStorage
+
+  function openNoticeModal() {
+    noticeModal.classList.add("show");
+    noticeModal.setAttribute("aria-hidden", "false");
+  }
+  
+  function closeNoticeModal() {
+    noticeModal.classList.remove("show");
+    noticeModal.setAttribute("aria-hidden", "true");
+  
+    // 若勾選「今天不要再顯示」→ 記到今晚 23:59:59
+    if (noticeHideToday.checked) {
+      const now = new Date();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      localStorage.setItem(NOTICE_KEY, String(end.getTime()));
+    }
+  }
+  
+  function shouldShowNotice() {
+    const raw = localStorage.getItem(NOTICE_KEY);
+    if (!raw) return true;
+    const until = Number(raw);
+    if (!Number.isFinite(until)) return true;
+    return Date.now() > until;
+  }
+
+
 
   // ✅ 掃碼用：網址帶 ?member=1 就自動開會員資料
   function autoOpenMemberModalFromURL() {
@@ -1388,6 +1514,15 @@
 
   // ==== 事件註冊 ====
 
+  noticeCloseBtn.addEventListener("click", closeNoticeModal);
+  noticeOkBtn.addEventListener("click", closeNoticeModal);
+  
+  // 點背景也可關閉（可選）
+  noticeModal.addEventListener("click", (e) => {
+    if (e.target === noticeModal) closeNoticeModal();
+  });
+
+
   // 上方「會員資料」按鈕：單純開資料視窗，不送單
   memberButton.addEventListener("click", () => openMemberModal(false, false));
 
@@ -1471,6 +1606,42 @@
   loadMenu();
   renderCart(); // 初始化畫面
   autoOpenMemberModalFromURL();
+  openNoticeModal();
+
+  <!-- 批發公告 Modal -->
+  <div class="modal-backdrop" id="noticeModal" aria-hidden="true">
+    <div class="modal notice-modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
+      <div class="notice-header">
+        <h2 id="noticeTitle">批發公告</h2>
+        <button class="notice-close" id="noticeCloseBtn" aria-label="關閉">✕</button>
+      </div>
+  
+      <div class="notice-body">
+        <p>21:00後訂單為隔日發送</p>
+        <p>需匯款之用戶需收到款項後才出貨</p>
+        <p>（楠梓、大社、仁武、大寮、小港較遠之地區運費再討論）</p>
+  
+        <p><strong>！！所有商品保固起算時間一出貨日期！！</strong></p>
+        <p><strong>！！所有商品保固範圍接不包含人損！！</strong></p>
+  
+        <p>液晶防拆貼破損視為上機</p>
+        <p>裝機保固觸摸問題三個月，有觸控問題之螢幕需提供裸測影片私訊課ㄓㄨ</p>
+        <p>確保拆機過程沒有造成總成其他損害</p>
+  
+        <p>電池售後保固六個月（需保持外觀完整，如有破損需補貼價差一半）</p>
+        <p>電芯售出後不保不退</p>
+      </div>
+  
+      <div class="notice-actions">
+        <label class="notice-checkbox">
+          <input type="checkbox" id="noticeHideToday" />
+          <span>今天不要再顯示</span>
+        </label>
+        <button class="btn-primary" id="noticeOkBtn">我知道了</button>
+      </div>
+    </div>
+  </div>
+
 </script>
 
 </body>
