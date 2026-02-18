@@ -821,7 +821,7 @@
 </div>
 <script>
   // ==== 設定你的 Apps Script Web App URL ====
-  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzg6XE-F_5b8Vk5met2gd4CjM2r8EHkYg-QbqT3zWOLLH09qJzorE1Wv9MasTPkxPJTpg/exec";
+  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbxMzJlz52UJ1xzVIpdbrDfJzqrdYbCKpHklUhxxPq7vkLc-iazBR_dNlCggLO9_7FPLxA/exec";
   const MENU_URL  = `${API_BASE_URL}?mode=menu`;
 
   // ✅【新增】網址帶 ?member=1 視為「會員註冊送出（0元訂單）」模式
@@ -1607,12 +1607,16 @@ function renderCart() {
       memberSaveBtn.textContent = "送出中…";
   
       try {
-        const resp = await fetch(API_BASE_URL, {
+        const resp = await fetch(SCRIPT_URL, {
           method: "POST",
-          redirect: "follow",
-          credentials: "omit",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(payload)
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "memberRegister",
+            source: "WEB",
+            customerName,
+            customerPhone,
+            customerAddress
+          })
         });
   
         const text = await resp.text();
