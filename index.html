@@ -749,6 +749,36 @@
   const cartModalCloseBtn = document.getElementById("cartModalCloseBtn");
   const cartModalCheckoutBtn = document.getElementById("cartModalCheckoutBtn");
 
+
+  // ✅ 掃碼用：網址帶 ?member=1 就自動開會員資料
+  function autoOpenMemberModalFromURL() {
+    const params = new URLSearchParams(window.location.search);
+  
+    const shouldOpen =
+      params.get("member") === "1" ||
+      window.location.hash === "#member";
+  
+    if (!shouldOpen) return;
+  
+    // force=1：強制填寫（可選）
+    const force = params.get("force") === "1";
+  
+    // fromCheckout = false（只是註冊/編輯會員資料，不是送單流程）
+    openMemberModal(force, false);
+  
+    // 若要「強制填寫」：把取消鈕隱藏 + 禁止點背景關閉
+    if (force) {
+      memberModal.dataset.force = "1";
+      memberCancelBtn.style.display = "none";
+      // 點 backdrop 不關閉（你目前 backdrop 本來就不會關，但保險）
+      memberModal.addEventListener("click", (e) => {
+        if (e.target === memberModal) e.stopPropagation();
+      });
+    } else {
+      memberModal.dataset.force = "0";
+      memberCancelBtn.style.display = "";
+    }
+  }
   // ==== 工具 ====
   // ✅ 從 variant 取得 thumb/large（支援多種欄位名）
   function getThumbUrl(v){
@@ -1437,6 +1467,7 @@
   loadMemberFromStorage();
   loadMenu();
   renderCart(); // 初始化畫面
+  autoOpenMemberModalFromURL();
 </script>
 
 </body>
