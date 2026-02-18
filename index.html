@@ -407,13 +407,6 @@
       width: 90%;
       max-width: 420px;
     }
-        .modal {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 16px 18px;
-      width: 90%;
-      max-width: 420px;
-    }
     .modal.cart-modal {
       max-height: 80vh;
       display: flex;
@@ -1606,9 +1599,8 @@
   loadMenu();
   renderCart(); // 初始化畫面
   autoOpenMemberModalFromURL();
-  openNoticeModal();
-
-  <!-- 批發公告 Modal -->
+  if (shouldShowNotice()) openNoticeModal();
+</script>
   <div class="modal-backdrop" id="noticeModal" aria-hidden="true">
     <div class="modal notice-modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
       <div class="notice-header">
@@ -1641,8 +1633,5 @@
       </div>
     </div>
   </div>
-
-</script>
-
 </body>
 </html>
