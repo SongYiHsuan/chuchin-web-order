@@ -741,6 +741,10 @@
       <input id="memberPhone" type="tel" autocomplete="tel" />
     </div>
     <div class="field">
+      <label for="memberEmail">Gmail</label>
+      <input id="memberEmail" type="email" autocomplete="email" placeholder="example@gmail.com" />
+    </div>
+    <div class="field">
       <label for="memberAddress">地址</label>
       <textarea id="memberAddress" rows="2"></textarea>
     </div>
@@ -822,7 +826,7 @@
 </div>
 <script>
   // ==== 設定你的 Apps Script Web App URL ====
-  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyNkxT7q_o1Gwit5oyO6Y_pEPkCnXSJzPXuWu79KCdXa0RB16E3y1o8qbMhxj_p5cTc/exec";
+  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbxqtxbrUoSoyPienXImomkcFXxWV2Nrz60uPJpIc58THNSe81bKNWvhxieQv69VWk5nUg/exec";
   const MENU_URL  = `${API_BASE_URL}?mode=menu`;
 
   // ✅【新增】網址帶 ?member=1 視為「會員註冊送出（0元訂單）」模式
@@ -844,6 +848,7 @@
   let member = {
     name: "",
     phone: "",
+    email: "", 
     address: "",
     deliveryTime: ""
   };
@@ -870,6 +875,7 @@
   const specModalTitle = document.getElementById("specModalTitle");
   const specModalList = document.getElementById("specModalList");
   const specModalCloseBtn = document.getElementById("specModalCloseBtn");
+  const memberEmailInput = document.getElementById("memberEmail");
 
 
   // 手機購物車相關 DOM
@@ -946,6 +952,7 @@
     }
   }
   // ==== 工具 ====
+  
   // ✅ 從 variant 取得 thumb/large（支援多種欄位名）
   function getThumbUrl(v){
     return (v.thumb || v.thumbUrl || v.thumb_url || v.imageThumb || "").trim();
@@ -996,6 +1003,7 @@
         member = {
           name: parsed.name || "",
           phone: parsed.phone || "",
+          email: parsed.email || "",
           address: parsed.address || "",
           deliveryTime: parsed.deliveryTime || ""
         };
@@ -1018,6 +1026,7 @@
       // 將目前 member 狀態填回 input
       memberNameInput.value = member.name || "";
       memberPhoneInput.value = member.phone || "";
+      memberEmailInput.value = member.email || "";
       memberAddressInput.value = member.address || "";
     
       memberModal.dataset.checkout = fromCheckout ? "1" : "0";
@@ -1586,6 +1595,7 @@ function renderCart() {
             source: "WEB",
             customerName: member.name,
             customerPhone: member.phone,
+            customerEmail: member.email,
             customerAddress: member.address
           })
         });
@@ -1662,6 +1672,7 @@ function renderCart() {
           source: "WEB",
           customerName: member.name,
           customerPhone: member.phone,
+          customerEmail: member.email,
           customerAddress: member.address,
           deliveryTime: member.deliveryTime,
         
@@ -1745,11 +1756,16 @@ function renderCart() {
   memberSaveBtn.addEventListener("click", () => {
     const name = memberNameInput.value.trim();
     const phone = memberPhoneInput.value.trim();
+    const email = memberEmailInput.value.trim(); 
     const address = memberAddressInput.value.trim();
     const fromCheckout = memberModal.dataset.checkout === "1";
   
     if (!name || !phone || !address) {
       showToast("請填寫姓名、電話與地址");
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast("請輸入正確的 Email");
       return;
     }
   
@@ -1770,7 +1786,7 @@ function renderCart() {
       deliveryTime = `${d}T${h}:${m}`;
     }
   
-    member = { name, phone, address, deliveryTime };
+    member = { name, phone, email, address, deliveryTime };
     saveMemberToStorage();
     closeMemberModal();
 
