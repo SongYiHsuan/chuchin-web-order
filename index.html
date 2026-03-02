@@ -8,6 +8,21 @@
   <link rel="apple-touch-icon" href="./logo.png?v=1">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    .pickup-toggle{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+      color:#333;
+      padding:8px 0 10px;
+      border-bottom:1px solid #eee;
+      margin-bottom:8px;
+      user-select:none;
+    }
+    .pickup-toggle input{
+      width:16px;
+      height:16px;
+    }
     /* ===== 批發公告 Modal（自適應）===== */
     .modal.notice-modal {
       width: min(92vw, 640px);
@@ -690,6 +705,7 @@
       content: "No Img";
     }
     #noticeModal { z-index: 60; }
+    #pickupInfoModal { z-index: 70; }
   </style>
 </head>
 <body>
@@ -718,7 +734,13 @@
         <h2>購物車</h2>
       </div>
       <div id="cartList"></div>
-      <div class="cart-summary" id="cartSummary"></div>
+      <div class="cart-summary">
+        <label class="pickup-toggle">
+          <input type="checkbox" id="pickupToggle" />
+          <span>自取（免運）</span>
+        </label>
+        <div id="cartSummary"></div>
+      </div>
       <button class="checkout-btn" id="checkoutBtn" disabled>送出訂單</button>
     </aside>
   </div>
@@ -726,7 +748,35 @@
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+<!-- 自取提示 Modal -->
+<div class="modal-backdrop" id="pickupInfoModal" aria-hidden="true">
+  <div class="modal notice-modal" role="dialog" aria-modal="true" aria-labelledby="pickupInfoTitle">
+    <div class="notice-header">
+      <h2 id="pickupInfoTitle">自取提醒</h2>
+      <button class="notice-close" id="pickupInfoCloseBtn" aria-label="關閉">✕</button>
+    </div>
 
+    <div class="notice-body" id="pickupInfoBody">
+      <p><strong>時間跟地點請至 LINE 官方確認</strong></p>
+
+      <div style="margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <a class="btn-primary" id="pickupLineBtn" href="https://lin.ee/LOUH5Ki" target="_blank" rel="noopener">
+          前往 LINE 官方
+        </a>
+
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          <div style="font-size:12px;color:#666;">沒加入過可掃碼</div>
+          <img src="./line_qr.png" alt="LINE 官方 QR Code"
+               style="width:180px; max-width:60vw; border-radius:12px; border:1px solid #eee;">
+        </div>
+      </div>
+    </div>
+
+    <div class="notice-actions">
+      <button class="btn-primary" id="pickupInfoOkBtn">我知道了</button>
+    </div>
+  </div>
+</div>
 <!-- 會員資料 Modal -->
 <div class="modal-backdrop" id="memberModal">
   <div class="modal">
@@ -774,7 +824,13 @@
   <div class="modal cart-modal">
     <h2>購物車</h2>
     <div id="cartModalList"></div>
-    <div class="cart-summary" id="cartModalSummary"></div>
+    <div class="cart-summary">
+      <label class="pickup-toggle">
+        <input type="checkbox" id="pickupToggleMobile" />
+        <span>自取（免運）</span>
+      </label>
+      <div id="cartModalSummary"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn-secondary" id="cartModalCloseBtn">關閉</button>
       <button class="btn-primary" id="cartModalCheckoutBtn">送出訂單</button>
@@ -852,6 +908,7 @@
     address: "",
     deliveryTime: ""
   };
+  let isPickup = false; // ✅ 自取
 
   // ==== DOM ====
   const categoryListEl = document.getElementById("categoryList");
@@ -876,6 +933,14 @@
   const specModalList = document.getElementById("specModalList");
   const specModalCloseBtn = document.getElementById("specModalCloseBtn");
   const memberEmailInput = document.getElementById("memberEmail");
+    // 自取 Toggle
+  const pickupToggle = document.getElementById("pickupToggle");
+  const pickupToggleMobile = document.getElementById("pickupToggleMobile");
+
+  // 自取提示 Modal
+  const pickupInfoModal = document.getElementById("pickupInfoModal");
+  const pickupInfoCloseBtn = document.getElementById("pickupInfoCloseBtn");
+  const pickupInfoOkBtn = document.getElementById("pickupInfoOkBtn");
 
 
   // 手機購物車相關 DOM
@@ -952,6 +1017,16 @@
     }
   }
   // ==== 工具 ====
+    function openPickupInfoModal(){
+    if (!pickupInfoModal) return;
+    pickupInfoModal.classList.add("show");
+    pickupInfoModal.setAttribute("aria-hidden", "false");
+  }
+  function closePickupInfoModal(){
+    if (!pickupInfoModal) return;
+    pickupInfoModal.classList.remove("show");
+    pickupInfoModal.setAttribute("aria-hidden", "true");
+  }
   
   // ✅ 從 variant 取得 thumb/large（支援多種欄位名）
   function getThumbUrl(v){
@@ -1045,24 +1120,25 @@
         : (isRegister ? "送出註冊" : "儲存");
         
       if (fromCheckout) {
-        deliveryRow.style.display = "block";
-    
-        // 預設成「現在」時間，分鐘對齊到 10 分鐘一格
-        const now = new Date();
-    
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, "0");
-        const dd = String(now.getDate()).padStart(2, "0");
-    
-        let hh = now.getHours();
-        let m = now.getMinutes();
-        m = Math.floor(m / 10) * 10;  // 0,10,20,30,40,50
-    
-        deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
-        deliveryHourSelect.value = String(hh).padStart(2, "0");
-        deliveryMinuteSelect.value = String(m).padStart(2, "0");
+        if (isPickup) {
+          deliveryRow.style.display = "none";
+        } else {
+          deliveryRow.style.display = "block";
+      
+          const now = new Date();
+          const yyyy = now.getFullYear();
+          const mm = String(now.getMonth() + 1).padStart(2, "0");
+          const dd = String(now.getDate()).padStart(2, "0");
+      
+          let hh = now.getHours();
+          let m = now.getMinutes();
+          m = Math.floor(m / 10) * 10;
+      
+          deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
+          deliveryHourSelect.value = String(hh).padStart(2, "0");
+          deliveryMinuteSelect.value = String(m).padStart(2, "0");
+        }
       } else {
-        // 從「會員資料」按鈕進來：不需要送達時間
         deliveryRow.style.display = "none";
       }
       cartModal.classList.remove("show");    
@@ -1352,6 +1428,9 @@ function createCartItemElement(item, onMinus, onPlus) {
 function renderCart() {
     // ✅ 每次重畫先同步運費（會自動加/移除）
     syncShippingItem();
+      // 同步自取 toggle 狀態（桌機/手機）
+    if (pickupToggle && pickupToggle.checked !== isPickup) pickupToggle.checked = isPickup;
+    if (pickupToggleMobile && pickupToggleMobile.checked !== isPickup) pickupToggleMobile.checked = isPickup;
   
     cartListEl.innerHTML = "";
     cartModalListEl.innerHTML = "";
@@ -1441,7 +1520,7 @@ function renderCart() {
     });
   
     // ✅ Summary 顯示：商品小計 / 運費 / 總計 + 提示文
-    const needShippingHint = goodsSubtotal > 0 && goodsSubtotal < SHIPPING_THRESHOLD;
+    const needShippingHint = !isPickup && goodsSubtotal > 0 && goodsSubtotal < SHIPPING_THRESHOLD;
     const remain = Math.max(0, SHIPPING_THRESHOLD - goodsSubtotal);
   
     const summaryHtml = `
@@ -1457,6 +1536,13 @@ function renderCart() {
         <span>總計</span>
         <span><strong>$${total}</strong></span>
       </div>
+      ${
+        isPickup
+          ? `<div style="margin-top:8px;font-size:12px;color:#666;">
+               已選擇 <strong>自取</strong>：免運（時間/地點請至 LINE 官方確認）
+             </div>`
+          : ``
+      }
       ${
         needShippingHint
           ? `<div style="margin-top:8px;font-size:12px;color:#666;">
@@ -1483,8 +1569,8 @@ function renderCart() {
       .filter(i => i.key !== SHIPPING_KEY)
       .reduce((s, i) => s + (i.price * i.quantity), 0);
   
-    const needShipping = subtotalWithoutShipping > 0 && subtotalWithoutShipping < SHIPPING_THRESHOLD;
-  
+    const needShipping = !isPickup && subtotalWithoutShipping > 0 && subtotalWithoutShipping < SHIPPING_THRESHOLD;
+    
     const idx = cart.findIndex(i => i.key === SHIPPING_KEY);
   
     if (needShipping) {
@@ -1509,7 +1595,37 @@ function renderCart() {
       if (idx !== -1) cart.splice(idx, 1);
     }
   }
-  
+      function setPickup(val){
+        isPickup = !!val;
+      
+        if (pickupToggle) pickupToggle.checked = isPickup;
+        if (pickupToggleMobile) pickupToggleMobile.checked = isPickup;
+      
+        // ✅ 若會員視窗正在「結帳流程」開著，立即同步欄位
+        const isMemberOpen = memberModal?.classList.contains("show");
+        const fromCheckout = memberModal?.dataset?.checkout === "1";
+        if (isMemberOpen && fromCheckout) {
+          deliveryRow.style.display = isPickup ? "none" : "block";
+        }
+      
+        renderCart();
+      }
+    
+      if (pickupToggle) {
+        pickupToggle.addEventListener("change", (e) => setPickup(e.target.checked));
+      }
+      if (pickupToggleMobile) {
+        pickupToggleMobile.addEventListener("change", (e) => setPickup(e.target.checked));
+      }
+    
+      // 自取提示 modal 關閉
+      if (pickupInfoCloseBtn) pickupInfoCloseBtn.addEventListener("click", closePickupInfoModal);
+      if (pickupInfoOkBtn) pickupInfoOkBtn.addEventListener("click", closePickupInfoModal);
+      if (pickupInfoModal) {
+        pickupInfoModal.addEventListener("click", (e) => {
+          if (e.target === pickupInfoModal) closePickupInfoModal();
+        });
+    }
     // ==== 購物車操作 ====
   
     function addToCart(item) {
@@ -1575,7 +1691,7 @@ function renderCart() {
 
     // ✅【新增】會員註冊：送出 0 元訂單到 Google Sheet（品項摘要：會員註冊）
     async function submitMemberRegisterOrder() {
-      if (!member.name || !member.phone || !member.address) {
+      if (!member.name || !member.phone || (!isPickup && !member.address)) {
         showToast("請先填寫會員資料");
         return;
       }
@@ -1593,10 +1709,11 @@ function renderCart() {
           body: JSON.stringify({
             mode: "memberRegister",
             source: "WEB",
+            pickup: isPickup,
             customerName: member.name,
             customerPhone: member.phone,
             customerEmail: member.email,
-            customerAddress: member.address
+            customerAddress: isPickup ? "自取（時間地點請至LINE官方確認）" : member.address
           })
         });
     
@@ -1637,12 +1754,11 @@ function renderCart() {
           return;
         }
       
-        if (!member.name || !member.phone || !member.address) {
+        if (!member.name || !member.phone || (!isPickup && !member.address)) {
           showToast("請先填寫會員資料");
           openMemberModal(true, true);
           return;
         }
-      
         let subtotal = 0;
         
         // ✅ 商品 items（排除運費）
@@ -1673,8 +1789,9 @@ function renderCart() {
           customerName: member.name,
           customerPhone: member.phone,
           customerEmail: member.email,
-          customerAddress: member.address,
-          deliveryTime: member.deliveryTime,
+          customerAddress: isPickup ? "自取（時間地點請至LINE官方確認）" : member.address,
+          deliveryTime: isPickup ? "" : member.deliveryTime,
+          pickup: isPickup,
         
           items: itemsPayload,
         
@@ -1720,6 +1837,7 @@ function renderCart() {
       
         if (data.status === "ok") {
           showToast("訂單送出成功！訂單編號：" + (data.orderId || ""));
+          if (isPickup) openPickupInfoModal();
           cart = [];
           renderCart();
           cartModal.classList.remove("show");
@@ -1760,7 +1878,7 @@ function renderCart() {
     const address = memberAddressInput.value.trim();
     const fromCheckout = memberModal.dataset.checkout === "1";
   
-    if (!name || !phone || !address) {
+    if (!name || !phone || (!isPickup && !address)) {
       showToast("請填寫姓名、電話與地址");
       return;
     }
@@ -1772,21 +1890,23 @@ function renderCart() {
     let deliveryTime = member.deliveryTime || "";
   
     // 從「送出訂單」流程進來，才需要日期 + 時間
-    if (fromCheckout) {
+    if (fromCheckout && !isPickup) {
       const d = deliveryDateInput.value;
       const h = deliveryHourSelect.value;
       const m = deliveryMinuteSelect.value;
-  
+    
       if (!d || !h || !m) {
         showToast("請選擇送達日期與時間");
         return;
       }
-  
-      // 組成類似原本 datetime-local 的格式：YYYY-MM-DDTHH:MM
       deliveryTime = `${d}T${h}:${m}`;
+    } else if (fromCheckout && isPickup) {
+      // 自取：不需要送達時間
+      deliveryTime = "";
     }
   
-    member = { name, phone, email, address, deliveryTime };
+    const finalAddress = isPickup ? "" : address;
+    member = { name, phone, email, address: finalAddress, deliveryTime };
     saveMemberToStorage();
     closeMemberModal();
 
