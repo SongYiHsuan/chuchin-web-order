@@ -757,8 +757,7 @@
     </div>
 
     <div class="notice-body" id="pickupInfoBody">
-      <p><strong>已選擇 自取：免運（時間/地點請至 LINE 官方確認）</strong></p>
-      
+      <p><strong>免運（時間/地點請至 LINE 官方確認）</strong></p>      
       <div style="margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
         <a class="btn-primary" id="pickupLineBtn" href="https://lin.ee/6aibSIbT" target="_blank" rel="noopener">
           前往 LINE 官方
@@ -1121,9 +1120,17 @@
         
       if (fromCheckout) {
         if (isPickup) {
+          // ✅ 自取：不需要送達時間、不需要地址
           deliveryRow.style.display = "none";
+      
+          const addressField = memberAddressInput.closest(".field");
+          if (addressField) addressField.style.display = "none";
         } else {
+          // ✅ 非自取：需要送達時間、需要地址
           deliveryRow.style.display = "block";
+      
+          const addressField = memberAddressInput.closest(".field");
+          if (addressField) addressField.style.display = "";
       
           const now = new Date();
           const yyyy = now.getFullYear();
@@ -1139,7 +1146,10 @@
           deliveryMinuteSelect.value = String(m).padStart(2, "0");
         }
       } else {
+        // ✅ 只是「會員資料」進來：不顯示送達時間，地址要顯示（讓他可維護資料）
         deliveryRow.style.display = "none";
+        const addressField = memberAddressInput.closest(".field");
+        if (addressField) addressField.style.display = "";
       }
       cartModal.classList.remove("show");    
       memberModal.classList.add("show");
@@ -1601,7 +1611,7 @@ function renderCart() {
         if (pickupToggle) pickupToggle.checked = isPickup;
         if (pickupToggleMobile) pickupToggleMobile.checked = isPickup;
       
-        // ✅ 若會員視窗正在「結帳流程」開著，立即同步欄位
+        // 若會員視窗正在「結帳流程」開著，立即同步送達時間欄位顯示
         const isMemberOpen = memberModal?.classList.contains("show");
         const fromCheckout = memberModal?.dataset?.checkout === "1";
         if (isMemberOpen && fromCheckout) {
@@ -1609,9 +1619,6 @@ function renderCart() {
         }
       
         renderCart();
-        if (!wasPickup && isPickup) {
-          openPickupInfoModal();
-        }
       }
     
       if (pickupToggle) {
@@ -1680,17 +1687,6 @@ function renderCart() {
       renderCart();
     }
   
-    // ==== 結帳流程：先開會員視窗，再真正送單 ====
-  
-    function startCheckout() {
-      if (!cart.length) {
-        showToast("請先選擇品項");
-        return;
-      }
-      const hasMember = member.name && member.phone && member.address;
-      // 有填過就給他看一次確認，沒填過就強制填寫
-      openMemberModal(!hasMember, true);
-    }
 
     // ✅【新增】會員註冊：送出 0 元訂單到 Google Sheet（品項摘要：會員註冊）
     async function submitMemberRegisterOrder() {
@@ -1843,6 +1839,7 @@ function renderCart() {
           cart = [];
           renderCart();
           cartModal.classList.remove("show");
+          if (isPickup) openPickupInfoModal();
         } else {
           showToast("送出失敗：" + (data.message || "未知錯誤"));
         }
@@ -1880,8 +1877,12 @@ function renderCart() {
     const address = memberAddressInput.value.trim();
     const fromCheckout = memberModal.dataset.checkout === "1";
   
-    if (!name || !phone || (!isPickup && !address)) {
-      showToast("請填寫姓名、電話與地址");
+    if (!name || !phone) {
+      showToast("請填寫姓名與電話");
+      return;
+    }
+    if (!isPickup && !address) {
+      showToast("請填寫地址");
       return;
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1947,14 +1948,28 @@ function renderCart() {
       showToast("請先選擇品項");
       return;
     }
-    openMemberModal(false, true);
+    openMemberModal(false, true); // ✅ 自取/非自取都先確認會員資料
+  });
+  
+  checkoutBtn.addEventListener("click", () => {
+    if (!cart.length) {
+      showToast("請先選擇品項");
+      return;
+    }
+    openMemberModal(false, true); // ✅ 自取/非自取都先確認會員資料
   });
   checkoutBtn.addEventListener("click", () => {
     if (!cart.length) {
       showToast("請先選擇品項");
       return;
     }
-    // 從「送出訂單」進來 → 需要日期+時間
+  
+    if (isPickup) {
+      openPickupInfoModal();   // ✅ 自取：跳 LINE/QR 提示
+      return;
+    }
+  
+    // ✅ 非自取：才進會員資料（含送達時間）
     openMemberModal(false, true);
   });
 
