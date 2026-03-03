@@ -879,7 +879,69 @@
     </div>
   </div>
 </div>
-<script>
+<div class="modal-backdrop" id="authModal">
+  <div class="modal">
+    <h2 id="authTitle">登入 / 註冊</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:10px;">
+      結帳前需要先登入，登入後會自動記住。
+    </p>
+
+    <div class="field">
+      <label>Email（建議 Gmail）</label>
+      <input id="authEmail" type="email" autocomplete="email" placeholder="example@gmail.com" />
+    </div>
+    <div class="field">
+      <label>密碼</label>
+      <input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 碼" />
+    </div>
+
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn-secondary" id="authCloseBtn">取消</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-secondary" id="authRegisterBtn">註冊</button>
+        <button class="btn-primary" id="authLoginBtn">登入</button>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+      <button class="btn-secondary" id="authLogoutBtn" style="display:none;">登出</button>
+    </div>
+  </div>
+</div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence,
+           createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } 
+    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp } 
+    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+  const firebaseConfigDingguan = {
+    apiKey: "AIzaSyCEtE82N6oPSRUnJZ_VzBOXaigm0lo8460",
+    authDomain: "dingguan-membership.firebaseapp.com",
+    projectId: "dingguan-membership",
+    storageBucket: "dingguan-membership.firebasestorage.app",
+    messagingSenderId: "1040300313583",
+    appId: "1:1040300313583:web:7d6f69076970ef2f8a841a"
+    // measurementId: "G-L389V9VNQ1" // 可選（你沒用 Analytics 可以不放）
+  };
+  // ✅ 命名 app：dingguan（避免跟別的專案混）
+  const appDingguan = initializeApp(firebaseConfigDingguan, "dingguan");
+  const auth = getAuth(appDingguan);
+  const db = getFirestore(appDingguan);
+  
+  // ✅ 記住登入
+  await setPersistence(auth, browserLocalPersistence);
+  
+  // 你下面所有程式都用這組 auth/db
+  window.__fb = {
+    auth, db,
+    onAuthStateChanged,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    doc, getDoc, setDoc, serverTimestamp
+  };
   // ==== 設定你的 Apps Script Web App URL ====
   const API_BASE_URL = "https://script.google.com/macros/s/AKfycbxwpib-0ViCfaMY5gvHg69MpzxJRZz2s_EinKWdshrut455-jd0YF7j5crE4pAaB6U-Pg/exec";
   const MENU_URL  = `${API_BASE_URL}?mode=menu`;
@@ -958,6 +1020,145 @@
   const noticeHideToday = document.getElementById("noticeHideToday");
   
   const NOTICE_KEY = "wholesaleNoticeHideUntil"; // 存到 localStorage
+
+  // ===== Firebase Auth 狀態 =====
+let currentUser = null;
+
+// ===== Auth Modal DOM =====
+const authModal = document.getElementById("authModal");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
+const authCloseBtn = document.getElementById("authCloseBtn");
+const authRegisterBtn = document.getElementById("authRegisterBtn");
+const authLoginBtn = document.getElementById("authLoginBtn");
+const authLogoutBtn = document.getElementById("authLogoutBtn");
+
+// ====== 打開/關閉 Auth modal ======
+function openAuthModal(){
+  authModal.classList.add("show");
+}
+function closeAuthModal(){
+  authModal.classList.remove("show");
+}
+authCloseBtn.addEventListener("click", closeAuthModal);
+authModal.addEventListener("click", (e) => { if (e.target === authModal) closeAuthModal(); });
+
+// ====== Firestore：讀/寫會員資料（用 uid）======
+async function loadMemberFromFirestore_(uid){
+    const { db, doc, getDoc } = window.__fb;
+    const ref = doc(db, "members", uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return snap.data();
+  }
+  async function saveMemberToFirestore_(uid, data){
+    const { db, doc, setDoc, serverTimestamp } = window.__fb;
+    const ref = doc(db, "members", uid);
+    await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+  }
+  
+  // ====== Auth：註冊/登入 ======
+  async function doRegister_(){
+    const { auth, createUserWithEmailAndPassword } = window.__fb;
+    const email = authEmail.value.trim();
+    const pass = authPassword.value.trim();
+    if (!email || !pass) return showToast("請輸入 Email / 密碼");
+    if (pass.length < 6) return showToast("密碼至少 6 碼");
+  
+    authRegisterBtn.disabled = true;
+    try{
+      await createUserWithEmailAndPassword(auth, email, pass);
+      showToast("註冊成功 ✅");
+      closeAuthModal();
+    }catch(e){
+      console.error(e);
+      showToast("註冊失敗：" + (e?.message || "error"));
+    }finally{
+      authRegisterBtn.disabled = false;
+    }
+  }
+  
+  async function doLogin_(){
+    const { auth, signInWithEmailAndPassword } = window.__fb;
+    const email = authEmail.value.trim();
+    const pass = authPassword.value.trim();
+    if (!email || !pass) return showToast("請輸入 Email / 密碼");
+  
+    authLoginBtn.disabled = true;
+    try{
+      await signInWithEmailAndPassword(auth, email, pass);
+      showToast("登入成功 ✅");
+      closeAuthModal();
+    }catch(e){
+      console.error(e);
+      showToast("登入失敗：" + (e?.message || "error"));
+    }finally{
+      authLoginBtn.disabled = false;
+    }
+  }
+  
+  async function doLogout_(){
+    const { auth, signOut } = window.__fb;
+    await signOut(auth);
+    showToast("已登出");
+  }
+  
+  authRegisterBtn.addEventListener("click", doRegister_);
+  authLoginBtn.addEventListener("click", doLogin_);
+  authLogoutBtn.addEventListener("click", doLogout_);
+  
+  // ====== 監聽登入狀態：自動記住就是靠這裡 ======
+  (function bindAuthState(){
+    const { auth, onAuthStateChanged } = window.__fb;
+    onAuthStateChanged(auth, async (u) => {
+      currentUser = u || null;
+  
+      // UI：有登入就顯示登出按鈕
+      authLogoutBtn.style.display = currentUser ? "" : "none";
+  
+      if (currentUser) {
+        // 登入後：優先從 Firestore 讀會員資料 → 填入 member（並存回 localStorage 方便你原本機制）
+        try{
+          const profile = await loadMemberFromFirestore_(currentUser.uid);
+          if (profile) {
+            member = {
+              name: profile.name || member.name || "",
+              phone: profile.phone || member.phone || "",
+              email: profile.email || currentUser.email || member.email || "",
+              address: profile.address || member.address || "",
+              deliveryTime: member.deliveryTime || ""
+            };
+            saveMemberToStorage();
+          } else {
+            // Firestore 還沒有資料：至少把 email 帶入
+            member.email = currentUser.email || member.email || "";
+            saveMemberToStorage();
+          }
+        }catch(e){
+          console.warn("load profile failed", e);
+        }
+      }
+    });
+  })();
+  
+  // ====== 結帳前強制登入（你只要把原本 checkout click 改成呼叫這個）=====
+  async function ensureLoginThenCheckout_(){
+    if (!cart.length) { showToast("請先選擇品項"); return; }
+  
+    if (!currentUser) {
+      // 沒登入：先開登入/註冊
+      openAuthModal();
+      showToast("結帳前請先登入/註冊");
+      return;
+    }
+  
+    // 有登入：進你的原本流程
+    if (isPickup) {
+      openPickupInfoModal();
+      return;
+    }
+    openMemberModal(false, true);
+  }
 
   function openNoticeModal() {
     noticeModal.classList.add("show");
@@ -1867,7 +2068,10 @@ function renderCart() {
 
 
   // 上方「會員資料」按鈕：單純開資料視窗，不送單
-  memberButton.addEventListener("click", () => openMemberModal(false, false));
+  memberButton.addEventListener("click", () => {
+    if (!currentUser) return openAuthModal();
+    openMemberModal(false, false);
+  });
 
   // 會員視窗「儲存」按鈕
   memberSaveBtn.addEventListener("click", () => {
@@ -1943,36 +2147,37 @@ function renderCart() {
   });
 
   // 手機 / 桌機的「送出訂單」都走 startCheckout
-  cartModalCheckoutBtn.addEventListener("click", () => {
-    if (!cart.length) {
-      showToast("請先選擇品項");
-      return;
-    }
-    openMemberModal(false, true); // ✅ 自取/非自取都先確認會員資料
-  });
+  // cartModalCheckoutBtn.addEventListener("click", () => {
+  //   if (!cart.length) {
+  //     showToast("請先選擇品項");
+  //     return;
+  //   }
+  //   openMemberModal(false, true); // ✅ 自取/非自取都先確認會員資料
+  // });
   
-  checkoutBtn.addEventListener("click", () => {
-    if (!cart.length) {
-      showToast("請先選擇品項");
-      return;
-    }
-    openMemberModal(false, true); // ✅ 自取/非自取都先確認會員資料
-  });
-  checkoutBtn.addEventListener("click", () => {
-    if (!cart.length) {
-      showToast("請先選擇品項");
-      return;
-    }
+  // checkoutBtn.addEventListener("click", () => {
+  //   if (!cart.length) {
+  //     showToast("請先選擇品項");
+  //     return;
+  //   }
+  //   openMemberModal(false, true); // ✅ 自取/非自取都先確認會員資料
+  // });
+  // checkoutBtn.addEventListener("click", () => {
+  //   if (!cart.length) {
+  //     showToast("請先選擇品項");
+  //     return;
+  //   }
   
-    if (isPickup) {
-      openPickupInfoModal();   // ✅ 自取：跳 LINE/QR 提示
-      return;
-    }
+  //   if (isPickup) {
+  //     openPickupInfoModal();   // ✅ 自取：跳 LINE/QR 提示
+  //     return;
+  //   }
   
-    // ✅ 非自取：才進會員資料（含送達時間）
-    openMemberModal(false, true);
-  });
-
+  //   // ✅ 非自取：才進會員資料（含送達時間）
+  //   openMemberModal(false, true);
+  // });
+  cartModalCheckoutBtn.addEventListener("click", ensureLoginThenCheckout_);
+  checkoutBtn.addEventListener("click", ensureLoginThenCheckout_);
   // ==== 初始化 ====
   initDeliveryTimeSelectors();  
   loadMemberFromStorage();
