@@ -2091,11 +2091,11 @@ function renderCart() {
         checkoutBtn.textContent = "送出中…";
         cartModalCheckoutBtn.textContent = "送出中…";
         try {
-        const resp = await fetch(API_BASE_URL, {   // ✅ 改：直接打 API_BASE_URL，不要帶 ?mode=checkout（body.mode 已經有）
+          const resp = await fetch(`${API_BASE_URL}?mode=checkout`, {
           method: "POST",
           redirect: "follow",
           credentials: "omit",
-          headers: { "Content-Type": "text/plain" }, // ✅ 改：用 text/plain（不要加 charset 參數）
+          headers: { "Content-Type": "text/plain" },
           body: JSON.stringify(payload)
         });
       
