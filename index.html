@@ -1105,7 +1105,26 @@ async function loadMemberFromFirestore_(uid){
       closeAuthModal();
     }catch(e){
       console.error(e);
-      showToast("註冊失敗：" + (e?.message || "error"));
+    
+      const code = e?.code || "";
+      // ✅ Email 已註冊
+      if (code === "auth/email-already-in-use") {
+        showToast("該帳號或密碼已註冊過");
+        return;
+      }
+    
+      // ✅ 其他常見註冊錯誤（可選：更友善）
+      if (code === "auth/weak-password") {
+        showToast("密碼強度不足（至少 6 碼）");
+        return;
+      }
+      if (code === "auth/invalid-email") {
+        showToast("Email 格式不正確");
+        return;
+      }
+    
+      // 其他未知錯誤
+      showToast("註冊失敗，請稍後再試");
     }finally{
       authRegisterBtn.disabled = false;
     }
