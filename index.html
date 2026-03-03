@@ -923,9 +923,11 @@
     storageBucket: "dingguan-membership.firebasestorage.app",
     messagingSenderId: "1040300313583",
     appId: "1:1040300313583:web:7d6f69076970ef2f8a841a"
-    // measurementId: "G-L389V9VNQ1" // 可選（你沒用 Analytics 可以不放）
   };
   // ✅ 命名 app：dingguan（避免跟別的專案混）
+  console.log("[FB] projectId =", firebaseConfigDingguan.projectId);
+  console.log("[FB] authDomain =", firebaseConfigDingguan.authDomain);
+  console.log("[FB] apiKey prefix =", (firebaseConfigDingguan.apiKey || "").slice(0, 8));
   const appDingguan = initializeApp(firebaseConfigDingguan, "dingguan");
   const auth = getAuth(appDingguan);
   const db = getFirestore(appDingguan);
