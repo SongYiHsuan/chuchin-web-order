@@ -8,6 +8,18 @@
   <link rel="apple-touch-icon" href="./logo.png?v=1">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    #logoutBtn{
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      color: #111;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #logoutBtn:hover{
+      background:#f3f4f6;
+    }
     .pickup-toggle{
       display:flex;
       align-items:center;
@@ -712,7 +724,10 @@
 <div class="app">
   <header>
     <h1>鼎冠-3C電子配件</h1>
-    <button id="memberButton">會員資料</button>
+    <div id="memberArea" style="display:flex;align-items:center;gap:10px;">
+      <button id="memberButton">請先登入 / 註冊</button>
+      <button id="logoutBtn" style="display:none;">登出</button>
+    </div>
   </header>
 
   <div class="main">
@@ -985,6 +1000,7 @@
   const deliveryHourSelect = document.getElementById("deliveryHour");
   const deliveryMinuteSelect = document.getElementById("deliveryMinute");
   const memberButton = document.getElementById("memberButton");
+  const logoutBtn = document.getElementById("logoutBtn");
   const memberSaveBtn = document.getElementById("memberSaveBtn");
   const memberCancelBtn = document.getElementById("memberCancelBtn");
   const memberModal = document.getElementById("memberModal");
@@ -1038,10 +1054,17 @@ const authLogoutBtn = document.getElementById("authLogoutBtn");
 // ====== 打開/關閉 Auth modal ======
 function updateMemberButtonUI_() {
   if (currentUser && currentUser.email) {
-    const name = String(currentUser.email).split("@")[0];
+    const email = String(currentUser.email);
+    const name = email.split("@")[0];
     memberButton.textContent = `你好：${name}`;
+    memberButton.title = email;
+
+    if (logoutBtn) logoutBtn.style.display = "";
   } else {
     memberButton.textContent = "請先登入 / 註冊";
+    memberButton.title = "";
+
+    if (logoutBtn) logoutBtn.style.display = "none";
   }
 }
 function openAuthModal(){
@@ -1111,6 +1134,13 @@ async function loadMemberFromFirestore_(uid){
     const { auth, signOut } = window.__fb;
     await signOut(auth);
     showToast("已登出");
+  }
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      await doLogout_();
+      // 可選：登出後順便清空 auth modal 的密碼
+      authPassword.value = "";
+    });
   }
   
   authRegisterBtn.addEventListener("click", doRegister_);
