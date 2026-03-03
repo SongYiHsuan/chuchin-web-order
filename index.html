@@ -1992,18 +1992,29 @@ function renderCart() {
           return;
         }
     
-        let data;
-        try { data = JSON.parse(text); }
-        catch {
-          showToast("回傳不是JSON：" + (text || "").slice(0, 120));
+        let data = null;
+        try { data = JSON.parse(text); } catch {}
+        
+        if (data && data.status === "ok") {
+          showToast("訂單送出成功！訂單編號：" + (data.orderId || ""));
+          cart = [];
+          renderCart();
+          cartModal.classList.remove("show");
+          if (isPickup) openPickupInfoModal();
           return;
         }
-    
-        if (data.status === "ok") {
-          showToast("會員註冊已送出 ✅");
-        } else {
-          showToast("註冊送出失敗：" + (data.message || "未知錯誤"));
+        
+        // ✅ 沒有 JSON 但 HTTP 200：先視為成功（因為後端回 OK）
+        if (resp.ok && String(text).trim() === "OK") {
+          showToast("訂單送出成功！（後端回 OK）");
+          cart = [];
+          renderCart();
+          cartModal.classList.remove("show");
+          if (isPickup) openPickupInfoModal();
+          return;
         }
+        
+        showToast("送出失敗：" + (data?.message || text || "未知錯誤"));
       } catch (err) {
         console.error(err);
         showToast("註冊送出失敗：" + (err?.message || "network error"));
