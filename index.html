@@ -1037,7 +1037,12 @@ const authLogoutBtn = document.getElementById("authLogoutBtn");
 
 // ====== 打開/關閉 Auth modal ======
 function updateMemberButtonUI_() {
-  memberButton.textContent = currentUser ? "會員資料" : "請先登入 / 註冊";
+  if (currentUser && currentUser.email) {
+    const name = String(currentUser.email).split("@")[0];
+    memberButton.textContent = `你好：${name}`;
+  } else {
+    memberButton.textContent = "請先登入 / 註冊";
+  }
 }
 function openAuthModal(){
   authModal.classList.add("show");
