@@ -1142,8 +1142,16 @@ async function loadMemberFromFirestore_(uid){
       showToast("登入成功 ✅");
       closeAuthModal();
     }catch(e){
-      console.error(e);
-      showToast("登入失敗：" + (e?.message || "error"));
+      const code = e?.code || "";
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+        showToast("帳號或密碼錯誤");
+        return;
+      }
+      if (code === "auth/user-not-found") {
+        showToast("此帳號尚未註冊");
+        return;
+      }
+      showToast("登入失敗，請稍後再試");
     }finally{
       authLoginBtn.disabled = false;
     }
@@ -1213,11 +1221,6 @@ async function loadMemberFromFirestore_(uid){
       return;
     }
   
-    // 有登入：進你的原本流程
-    if (isPickup) {
-      openPickupInfoModal();
-      return;
-    }
     openMemberModal(false, true);
   }
 
@@ -1547,7 +1550,7 @@ async function loadMemberFromFirestore_(uid){
       // ✅ 依「品名」分組，做同名多規格
       const grouped = {};
       items.forEach(it => {
-        const name = it.item;
+        const name = (it.name || it.item || "").trim();
         if (!grouped[name]) grouped[name] = [];
         grouped[name].push(it);
       });
@@ -1899,18 +1902,20 @@ function renderCart() {
         });
     }
     // ==== 購物車操作 ====
-  
     function addToCart(item) {
       const stock = item.stock != null ? item.stock : 0;
       if (stock <= 0) {
         showToast("此品項庫存不足");
         return;
       }
-    const spec = (item.spec || "").trim();
-    const key = item.category + "||" + item.item + "||" + spec;
-    const existing = cart.find(c => c.key === key);
-  
-  
+    
+      const spec = (item.spec || "").trim();
+      const productName = (item.name || item.item || "").trim();
+      const key = item.category + "||" + productName + "||" + spec;
+    
+      // ✅ 你漏了這行（致命）
+      const existing = cart.find(c => c.key === key);
+    
       if (existing) {
         if (existing.quantity >= existing.stock) {
           showToast("已達庫存上限");
@@ -1921,13 +1926,14 @@ function renderCart() {
         cart.push({
           key,
           category: item.category,
-          name: item.item,
+          name: productName,
           spec: spec,
           price: item.price,
           stock: stock,
           quantity: 1
         });
       }
+    
       syncShippingItem();
       renderCart();
     }
@@ -2065,6 +2071,8 @@ function renderCart() {
           discountValue: 0,
           discountAmount: 0
         };
+        console.log("[checkout] cart =", cart);
+        console.log("[checkout] payload =", payload);
 
       
         checkoutBtn.disabled = true;
