@@ -1034,6 +1034,9 @@ const authLoginBtn = document.getElementById("authLoginBtn");
 const authLogoutBtn = document.getElementById("authLogoutBtn");
 
 // ====== 打開/關閉 Auth modal ======
+function updateMemberButtonUI_() {
+  memberButton.textContent = currentUser ? "會員資料" : "請先登入 / 註冊";
+}
 function openAuthModal(){
   authModal.classList.add("show");
 }
@@ -1112,6 +1115,7 @@ async function loadMemberFromFirestore_(uid){
     const { auth, onAuthStateChanged } = window.__fb;
     onAuthStateChanged(auth, async (u) => {
       currentUser = u || null;
+      updateMemberButtonUI_();
   
       // UI：有登入就顯示登出按鈕
       authLogoutBtn.style.display = currentUser ? "" : "none";
@@ -2181,6 +2185,7 @@ function renderCart() {
   // ==== 初始化 ====
   initDeliveryTimeSelectors();  
   loadMemberFromStorage();
+  updateMemberButtonUI_();
   loadMenu();
   renderCart(); // 初始化畫面
   autoOpenMemberModalFromURL();
