@@ -1190,12 +1190,13 @@ async function loadMemberFromFirestore_(uid){
             };
             saveMemberToStorage();
           } else {
-            // Firestore 還沒有資料：至少把 email 帶入
             member.email = currentUser.email || member.email || "";
             saveMemberToStorage();
           }
         }catch(e){
-          console.warn("load profile failed", e);
+          // ✅ 先忽略 Firestore 權限問題，不要影響下單
+          member.email = currentUser?.email || member.email || "";
+          saveMemberToStorage();
         }
       }
     });
