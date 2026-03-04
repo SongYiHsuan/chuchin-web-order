@@ -797,7 +797,7 @@
     <h2>會員資料</h2>
     <p>第一次下單請先填寫，下次會自動帶入，可在此畫面修改。</p>
     <div class="field">
-      <label for="memberName">姓名</label>
+      <label for="memberName">店家名稱</label>
       <input id="memberName" type="text" autocomplete="name" />
     </div>
     <div class="field">
@@ -2162,7 +2162,7 @@ function renderCart() {
     const fromCheckout = memberModal.dataset.checkout === "1";
   
     if (!name || !phone) {
-      showToast("請填寫姓名與電話");
+      showToast("請填寫店家名稱與電話");
       return;
     }
     if (!isPickup && !address) {
