@@ -8,6 +8,17 @@
   <link rel="apple-touch-icon" href="./logo.png?v=1">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    .spec-row.selected {
+      background: #eef4ff;
+      border-left: 4px solid #2253a0;
+    }
+    
+    #specAddToCartBtn:disabled,
+    #specQtyMinus:disabled,
+    #specQtyPlus:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
     #logoutBtn{
       border: 1px solid #e5e7eb;
       background: #fff;
@@ -852,16 +863,34 @@
   </div>
 </div>
 
-<!-- 規格選擇 Modal（點選不關閉，按關閉才關） -->
-<div class="modal-backdrop" id="specModal">
-  <div class="modal spec-modal">
-    <div class="spec-header">
-      <h3 id="specModalTitle">選擇規格</h3>
-      <button class="spec-close" id="specModalCloseBtn">關閉</button>
+  <!-- 商品加入 Modal -->
+  <div class="modal-backdrop" id="specModal">
+    <div class="modal spec-modal">
+      <div class="spec-header">
+        <h3 id="specModalTitle">選擇商品</h3>
+        <button class="spec-close" id="specModalCloseBtn">關閉</button>
+      </div>
+  
+      <div class="spec-list" id="specModalList"></div>
+  
+      <div style="padding:14px 18px; border-top:1px solid #eee; background:#fff;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+          <div style="font-size:14px; color:#666;">數量</div>
+  
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button type="button" id="specQtyMinus" class="qty-btn" style="width:32px;height:32px;">-</button>
+            <div id="specQtyValue" style="min-width:28px; text-align:center; font-size:18px; font-weight:700;">1</div>
+            <button type="button" id="specQtyPlus" class="qty-btn" style="width:32px;height:32px;">+</button>
+          </div>
+        </div>
+  
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div id="specSelectedInfo" style="font-size:13px; color:#666;">請先選擇規格</div>
+          <button type="button" id="specAddToCartBtn" class="btn-primary">加入購物車</button>
+        </div>
+      </div>
     </div>
-    <div class="spec-list" id="specModalList"></div>
   </div>
-</div>
   <div class="modal-backdrop" id="noticeModal" aria-hidden="true">
   <div class="modal notice-modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
     <div class="notice-header">
@@ -987,6 +1016,9 @@
     deliveryTime: ""
   };
   let isPickup = false; // ✅ 自取
+  let specModalVariants = [];
+  let specSelectedVariant = null;
+  let specSelectedQty = 1;
 
   // ==== DOM ====
   const categoryListEl = document.getElementById("categoryList");
@@ -1012,6 +1044,11 @@
   const specModalList = document.getElementById("specModalList");
   const specModalCloseBtn = document.getElementById("specModalCloseBtn");
   const memberEmailInput = document.getElementById("memberEmail");
+  const specQtyMinus = document.getElementById("specQtyMinus");
+  const specQtyPlus = document.getElementById("specQtyPlus");
+  const specQtyValue = document.getElementById("specQtyValue");
+  const specSelectedInfo = document.getElementById("specSelectedInfo");
+  const specAddToCartBtn = document.getElementById("specAddToCartBtn");
     // 自取 Toggle
   const pickupToggle = document.getElementById("pickupToggle");
   const pickupToggleMobile = document.getElementById("pickupToggleMobile");
@@ -1452,43 +1489,71 @@ async function loadMemberFromFirestore_(uid){
     }
   }
   
-  function openSpecModal(productName, variants) {
-    specModalTitle.textContent = productName;
+  function updateSpecModalFooter() {
+    specQtyValue.textContent = String(specSelectedQty);
+  
+    if (!specSelectedVariant) {
+      specSelectedInfo.textContent = "請先選擇規格";
+      specQtyMinus.disabled = true;
+      specQtyPlus.disabled = true;
+      specAddToCartBtn.disabled = true;
+      return;
+    }
+  
+    const spec = (specSelectedVariant.spec || "").trim();
+    const title = spec ? `${specSelectedVariant.name}（${spec}）` : specSelectedVariant.name;
+    const stock = specSelectedVariant.stock ?? 0;
+  
+    specSelectedInfo.textContent = `${title}｜單價 $${specSelectedVariant.price}｜庫存 ${stock}`;
+  
+    specQtyMinus.disabled = specSelectedQty <= 1;
+    specQtyPlus.disabled = specSelectedQty >= stock;
+    specAddToCartBtn.disabled = stock <= 0;
+  }
+  
+  function renderSpecRows() {
     specModalList.innerHTML = "";
   
-    variants.forEach(v => {
+    specModalVariants.forEach(v => {
       const stock = v.stock != null ? v.stock : 0;
       const spec = (v.spec || "").trim();
       const title = spec ? spec : "（無規格）";
   
       const row = document.createElement("div");
-      row.className = "spec-row" + (stock <= 0 ? " disabled" : "");
+      row.className =
+        "spec-row" +
+        (stock <= 0 ? " disabled" : "") +
+        (specSelectedVariant === v ? " selected" : "");
   
       row.innerHTML = `
-      <div class="spec-left">
-        <div class="spec-title">${escapeHtml(title)}</div>
-        <div class="spec-sub">庫存 ${stock}</div>
-      </div>
-    
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div class="spec-price">$${v.price}</div>
-    
-        <div class="item-thumb ${getThumbUrl(v) ? "" : " empty"}" style="width:54px;height:54px;">
-          ${
-            getThumbUrl(v)
-              ? `<img src="${getThumbUrl(v)}" alt="" loading="lazy">`
-              : ``
-          }
+        <div class="spec-left">
+          <div class="spec-title">${escapeHtml(title)}</div>
+          <div class="spec-sub">庫存 ${stock}</div>
         </div>
-      </div>
-    `;
+  
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="spec-price">$${v.price}</div>
+  
+          <div class="item-thumb ${getThumbUrl(v) ? "" : " empty"}" style="width:54px;height:54px;">
+            ${
+              getThumbUrl(v)
+                ? `<img src="${getThumbUrl(v)}" alt="" loading="lazy">`
+                : ``
+            }
+          </div>
+        </div>
+      `;
+  
       if (stock > 0) {
         row.onclick = () => {
-          // ✅ 點選加入購物車，但不關閉
-          addToCart(v);
-          showToast("已加入：" + productName + (spec ? `（${spec}）` : ""));
+          specSelectedVariant = v;
+          if (specSelectedQty > stock) specSelectedQty = stock;
+          if (specSelectedQty < 1) specSelectedQty = 1;
+          renderSpecRows();
+          updateSpecModalFooter();
         };
       }
+  
       const imgEl = row.querySelector(".item-thumb img");
       if (imgEl) {
         imgEl.addEventListener("click", (e) => {
@@ -1496,9 +1561,27 @@ async function loadMemberFromFirestore_(uid){
           openLargeFromVariant(v);
         });
       }
+  
       specModalList.appendChild(row);
     });
+  }
+
+  function openSpecModal(productName, variants) {
+    specModalTitle.textContent = productName;
   
+    specModalVariants = variants.slice();
+    specSelectedVariant = null;
+    specSelectedQty = 1;
+  
+    if (variants.length === 1) {
+      const only = variants[0];
+      if ((only.stock ?? 0) > 0) {
+        specSelectedVariant = only;
+      }
+    }
+  
+    renderSpecRows();
+    updateSpecModalFooter();
     specModal.classList.add("show");
   }
   
@@ -1507,6 +1590,41 @@ async function loadMemberFromFirestore_(uid){
   }
   
   specModalCloseBtn.addEventListener("click", closeSpecModal);
+  specQtyMinus.addEventListener("click", () => {
+    if (!specSelectedVariant) return;
+    if (specSelectedQty > 1) {
+      specSelectedQty -= 1;
+      updateSpecModalFooter();
+    }
+  });
+  
+  specQtyPlus.addEventListener("click", () => {
+    if (!specSelectedVariant) return;
+    const stock = specSelectedVariant.stock ?? 0;
+    if (specSelectedQty < stock) {
+      specSelectedQty += 1;
+      updateSpecModalFooter();
+    }
+  });
+  
+  specAddToCartBtn.addEventListener("click", () => {
+    if (!specSelectedVariant) {
+      showToast("請先選擇規格");
+      return;
+    }
+  
+    addToCart(specSelectedVariant, specSelectedQty);
+  
+    const spec = (specSelectedVariant.spec || "").trim();
+    showToast(
+      "已加入：" +
+      specSelectedVariant.name +
+      (spec ? `（${spec}）` : "") +
+      ` × ${specSelectedQty}`
+    );
+  
+    closeSpecModal();
+  });
   // 點 backdrop 關閉（可選）
   specModal.addEventListener("click", (e) => {
     if (e.target === specModal) closeSpecModal();
@@ -1573,10 +1691,9 @@ async function loadMemberFromFirestore_(uid){
     
         // 點卡片：多規格→開規格 modal；單規格→加入購物車
         card.onclick = () => {
-          if (hasMulti) openSpecModal(name, variants);
-          else addToCart(variants[0]);
+          openSpecModal(name, variants);
         };
-    
+            
         // 左側文字區
         const left = document.createElement("div");
         left.className = "item-left";
@@ -1902,27 +2019,34 @@ function renderCart() {
         });
     }
     // ==== 購物車操作 ====
-    function addToCart(item) {
+    function addToCart(item, qty = 1) {
       const stock = item.stock != null ? item.stock : 0;
       if (stock <= 0) {
         showToast("此品項庫存不足");
         return;
       }
     
+      qty = Number(qty) || 1;
+      if (qty < 1) qty = 1;
+    
       const spec = (item.spec || "").trim();
       const productName = (item.name || item.item || "").trim();
       const key = item.category + "||" + productName + "||" + spec;
     
-      // ✅ 你漏了這行（致命）
       const existing = cart.find(c => c.key === key);
     
       if (existing) {
-        if (existing.quantity >= existing.stock) {
-          showToast("已達庫存上限");
+        if (existing.quantity + qty > existing.stock) {
+          showToast("加入數量超過庫存");
           return;
         }
-        existing.quantity += 1;
+        existing.quantity += qty;
       } else {
+        if (qty > stock) {
+          showToast("加入數量超過庫存");
+          return;
+        }
+    
         cart.push({
           key,
           category: item.category,
@@ -1930,7 +2054,7 @@ function renderCart() {
           spec: spec,
           price: item.price,
           stock: stock,
-          quantity: 1
+          quantity: qty
         });
       }
     
