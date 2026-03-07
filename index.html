@@ -6,8 +6,22 @@
   <link rel="icon" type="image/png" href="./logo.png?v=1">
   <link rel="shortcut icon" type="image/png" href="./logo.png?v=1">
   <link rel="apple-touch-icon" href="./logo.png?v=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
+    html, body {
+      touch-action: manipulation;
+    }
+    
+    button,
+    .item-card,
+    .category-btn,
+    .qty-btn,
+    .btn-primary,
+    .btn-secondary,
+    .spec-row,
+    .cart-fab {
+      touch-action: manipulation;
+    }
     .spec-row.selected {
       background: #eef4ff;
       border-left: 4px solid #2253a0;
@@ -136,10 +150,6 @@
       .notice-body { font-size: 13px; }
       .notice-actions { flex-direction: column; align-items: stretch; }
       .notice-actions .btn-primary { width: 100%; }
-    }
-
-    html, body {
-      height: 100%;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
