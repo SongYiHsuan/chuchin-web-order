@@ -26,7 +26,18 @@
       background: #eef4ff;
       border-left: 4px solid #2253a0;
     }
-    
+    #orderHistoryBtn{
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      color: #111;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #orderHistoryBtn:hover{
+      background:#f3f4f6;
+    }
     #specAddToCartBtn:disabled,
     #specQtyMinus:disabled,
     #specQtyPlus:disabled {
@@ -1057,7 +1068,7 @@
     doc, getDoc, setDoc, serverTimestamp
   };
   // ==== 設定你的 Apps Script Web App URL ====
-  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyOiD2Gz0VYc5mu5yI__SJAXY6B3Qk2wjvShxUx4zmo599h3dW73ThEvEAbUoYURXr6Qg/exec";
+  const API_BASE_URL = "https://script.google.com/macros/s/AKfycbx_1jP_btDCTQ3H3jBdygApygPIxanhX4G3iBHS1nCDNpaR_US16_qXuKUfZPFTaqQg9w/exec";
   const MENU_URL  = `${API_BASE_URL}?mode=menu`;
 
   // ✅【新增】網址帶 ?member=1 視為「會員註冊送出（0元訂單）」模式
@@ -1178,7 +1189,7 @@ async function loadMyOrders_() {
       return;
     }
 
-    renderMyOrders_(data.orders || []);
+    renderMyOrders_(Array.isArray(data.orders) ? data.orders : []);
   } catch (err) {
     console.error(err);
     orderHistoryList.innerHTML = `<div class="order-history-empty">載入失敗，請稍後再試</div>`;
