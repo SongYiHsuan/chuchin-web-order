@@ -739,6 +739,49 @@
     }
     #noticeModal { z-index: 60; }
     #pickupInfoModal { z-index: 70; }
+    .order-history-card{
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:12px;
+      margin-bottom:10px;
+      background:#fff;
+    }
+    .order-history-top{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:8px;
+      flex-wrap:wrap;
+    }
+    .order-history-id{
+      font-weight:700;
+      color:#2253a0;
+    }
+    .order-history-date{
+      font-size:12px;
+      color:#666;
+    }
+    .order-history-status{
+      font-size:12px;
+      font-weight:700;
+    }
+    .order-history-meta{
+      font-size:13px;
+      color:#444;
+      margin-bottom:6px;
+    }
+    .order-history-summary{
+      font-size:13px;
+      color:#111;
+      line-height:1.5;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    .order-history-empty{
+      font-size:13px;
+      color:#777;
+      padding:12px 4px;
+    }
   </style>
 </head>
 <body>
@@ -747,6 +790,7 @@
     <h1>鼎冠-3C電子配件</h1>
     <div id="memberArea" style="display:flex;align-items:center;gap:10px;">
       <button id="memberButton">請先登入 / 註冊</button>
+      <button id="orderHistoryBtn" style="display:none;">訂單紀錄</button>
       <button id="logoutBtn" style="display:none;">登出</button>
     </div>
   </header>
@@ -962,6 +1006,20 @@
     </div>
   </div>
 </div>
+<div class="modal-backdrop" id="orderHistoryModal">
+  <div class="modal cart-modal" style="max-width:720px;">
+    <h2>訂單紀錄</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:10px;">
+      顯示目前登入帳號的下單紀錄
+    </p>
+
+    <div id="orderHistoryList" style="flex:1;overflow-y:auto;min-height:0;"></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="orderHistoryCloseBtn">關閉</button>
+    </div>
+  </div>
+</div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
   import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence,
@@ -1031,6 +1089,10 @@
   let specSelectedQty = 1;
 
   // ==== DOM ====
+  const orderHistoryBtn = document.getElementById("orderHistoryBtn");
+  const orderHistoryModal = document.getElementById("orderHistoryModal");
+  const orderHistoryList = document.getElementById("orderHistoryList");
+  const orderHistoryCloseBtn = document.getElementById("orderHistoryCloseBtn");
   const categoryListEl = document.getElementById("categoryList");
   const itemListEl = document.getElementById("itemList");
   const cartListEl = document.getElementById("cartList");
@@ -1098,6 +1160,66 @@ const authRegisterBtn = document.getElementById("authRegisterBtn");
 const authLoginBtn = document.getElementById("authLoginBtn");
 const authLogoutBtn = document.getElementById("authLogoutBtn");
 
+async function loadMyOrders_() {
+  if (!currentUser?.email) {
+    showToast("請先登入");
+    return;
+  }
+
+  orderHistoryList.innerHTML = `<div class="order-history-empty">載入中...</div>`;
+
+  try {
+    const url = `${API_BASE_URL}?mode=myOrders&orderEmail=${encodeURIComponent(currentUser.email)}`;
+    const resp = await fetch(url, { method: "GET" });
+    const data = await resp.json();
+
+    if (!resp.ok || data.status === "error") {
+      orderHistoryList.innerHTML = `<div class="order-history-empty">載入失敗</div>`;
+      return;
+    }
+
+    renderMyOrders_(data.orders || []);
+  } catch (err) {
+    console.error(err);
+    orderHistoryList.innerHTML = `<div class="order-history-empty">載入失敗，請稍後再試</div>`;
+  }
+}
+
+function renderMyOrders_(orders) {
+  if (!orders.length) {
+    orderHistoryList.innerHTML = `<div class="order-history-empty">目前沒有訂單紀錄</div>`;
+    return;
+  }
+
+  orderHistoryList.innerHTML = orders.map(order => `
+    <div class="order-history-card">
+      <div class="order-history-top">
+        <div>
+          <div class="order-history-id">${escapeHtml(order.orderId || "")}</div>
+          <div class="order-history-date">${escapeHtml(order.dateText || "")} ${escapeHtml(order.timeText || "")}</div>
+        </div>
+        <div class="order-history-status">${escapeHtml(order.status || "")}</div>
+      </div>
+
+      <div class="order-history-meta">總計：$${Number(order.total || 0)}</div>
+      <div class="order-history-meta">收件人：${escapeHtml(order.customerName || "")}</div>
+      <div class="order-history-meta">電話：${escapeHtml(order.customerPhone || "")}</div>
+      <div class="order-history-meta">地址：${escapeHtml(order.customerAddress || "")}</div>
+      <div class="order-history-meta">送達時間：${escapeHtml(order.deliveryTime || "")}</div>
+      <div class="order-history-summary">品項：${escapeHtml(order.summary || "")}</div>
+    </div>
+  `).join("");
+}
+
+function openOrderHistoryModal() {
+  orderHistoryModal.classList.add("show");
+  loadMyOrders_();
+}
+
+function closeOrderHistoryModal() {
+  orderHistoryModal.classList.remove("show");
+}
+
 // ====== 打開/關閉 Auth modal ======
 function updateMemberButtonUI_() {
   if (currentUser && currentUser.email) {
@@ -1106,11 +1228,13 @@ function updateMemberButtonUI_() {
     memberButton.textContent = `你好：${name}`;
     memberButton.title = email;
 
+    if (orderHistoryBtn) orderHistoryBtn.style.display = "";
     if (logoutBtn) logoutBtn.style.display = "";
   } else {
     memberButton.textContent = "請先登入 / 註冊";
     memberButton.title = "";
 
+    if (orderHistoryBtn) orderHistoryBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "none";
   }
 }
@@ -2352,7 +2476,25 @@ function renderCart() {
   memberCancelBtn.addEventListener("click", () => {
     closeMemberModal();
   });
-
+  if (orderHistoryBtn) {
+    orderHistoryBtn.addEventListener("click", () => {
+      if (!currentUser) {
+        openAuthModal();
+        return;
+      }
+      openOrderHistoryModal();
+    });
+  }
+  
+  if (orderHistoryCloseBtn) {
+    orderHistoryCloseBtn.addEventListener("click", closeOrderHistoryModal);
+  }
+  
+  if (orderHistoryModal) {
+    orderHistoryModal.addEventListener("click", (e) => {
+      if (e.target === orderHistoryModal) closeOrderHistoryModal();
+    });
+  }
 
   // 手機購物車 modal 事件
   cartFab.addEventListener("click", () => {
@@ -2362,36 +2504,6 @@ function renderCart() {
     cartModal.classList.remove("show");
   });
 
-  // 手機 / 桌機的「送出訂單」都走 startCheckout
-  // cartModalCheckoutBtn.addEventListener("click", () => {
-  //   if (!cart.length) {
-  //     showToast("請先選擇品項");
-  //     return;
-  //   }
-  //   openMemberModal(false, true); // ✅ 自取/非自取都先確認會員資料
-  // });
-  
-  // checkoutBtn.addEventListener("click", () => {
-  //   if (!cart.length) {
-  //     showToast("請先選擇品項");
-  //     return;
-  //   }
-  //   openMemberModal(false, true); // ✅ 自取/非自取都先確認會員資料
-  // });
-  // checkoutBtn.addEventListener("click", () => {
-  //   if (!cart.length) {
-  //     showToast("請先選擇品項");
-  //     return;
-  //   }
-  
-  //   if (isPickup) {
-  //     openPickupInfoModal();   // ✅ 自取：跳 LINE/QR 提示
-  //     return;
-  //   }
-  
-  //   // ✅ 非自取：才進會員資料（含送達時間）
-  //   openMemberModal(false, true);
-  // });
   cartModalCheckoutBtn.addEventListener("click", ensureLoginThenCheckout_);
   checkoutBtn.addEventListener("click", ensureLoginThenCheckout_);
   // ==== 初始化 ====
