@@ -1006,7 +1006,8 @@
 
     <div class="modal-actions" style="justify-content:space-between;">
       <button class="btn-secondary" id="authCloseBtn">取消</button>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        <button class="btn-secondary" id="authForgotBtn">忘記密碼</button>
         <button class="btn-secondary" id="authRegisterBtn">註冊</button>
         <button class="btn-primary" id="authLoginBtn">登入</button>
       </div>
@@ -1033,9 +1034,16 @@
 </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence,
-           createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } 
-    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import {
+      getAuth,
+      onAuthStateChanged,
+      setPersistence,
+      browserLocalPersistence,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+      sendPasswordResetEmail
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, serverTimestamp } 
     from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
@@ -1065,6 +1073,7 @@
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signOut,
+    sendPasswordResetEmail,
     doc, getDoc, setDoc, serverTimestamp
   };
   // ==== 設定你的 Apps Script Web App URL ====
@@ -1170,6 +1179,7 @@ const authCloseBtn = document.getElementById("authCloseBtn");
 const authRegisterBtn = document.getElementById("authRegisterBtn");
 const authLoginBtn = document.getElementById("authLoginBtn");
 const authLogoutBtn = document.getElementById("authLogoutBtn");
+const authForgotBtn = document.getElementById("authForgotBtn");
 
 async function loadMyOrders_() {
   if (!currentUser?.email) {
@@ -1338,7 +1348,53 @@ async function loadMemberFromFirestore_(uid){
       authLoginBtn.disabled = false;
     }
   }
+  async function doForgotPassword_() {
+    const { auth, sendPasswordResetEmail } = window.__fb;
+    const email = authEmail.value.trim();
   
+    if (!email) {
+      showToast("請先輸入 Email");
+      authEmail.focus();
+      return;
+    }
+  
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast("請輸入正確的 Email");
+      authEmail.focus();
+      return;
+    }
+  
+    authForgotBtn.disabled = true;
+    const oldText = authForgotBtn.textContent;
+    authForgotBtn.textContent = "寄送中…";
+  
+    try {
+      await sendPasswordResetEmail(auth, email);
+      showToast("密碼重設信已寄出，請到信箱確認");
+    } catch (e) {
+      console.error(e);
+      const code = e?.code || "";
+  
+      if (code === "auth/user-not-found") {
+        showToast("此帳號尚未註冊");
+        return;
+      }
+      if (code === "auth/invalid-email") {
+        showToast("Email 格式不正確");
+        return;
+      }
+      if (code === "auth/too-many-requests") {
+        showToast("操作太頻繁，請稍後再試");
+        return;
+      }
+  
+      showToast("寄送失敗，請稍後再試");
+    } finally {
+      authForgotBtn.disabled = false;
+      authForgotBtn.textContent = oldText;
+    }
+  }
+    
   async function doLogout_(){
     const { auth, signOut } = window.__fb;
     await signOut(auth);
@@ -1355,6 +1411,7 @@ async function loadMemberFromFirestore_(uid){
   authRegisterBtn.addEventListener("click", doRegister_);
   authLoginBtn.addEventListener("click", doLogin_);
   authLogoutBtn.addEventListener("click", doLogout_);
+  authForgotBtn.addEventListener("click", doForgotPassword_);
   
   // ====== 監聽登入狀態：自動記住就是靠這裡 ======
   (function bindAuthState(){
