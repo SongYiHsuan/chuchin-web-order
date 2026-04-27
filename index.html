@@ -170,13 +170,12 @@
       color: #222;
     }
     .app {
-      max-width: 960px;
+      max-width: 1180px;
       margin: 0 auto;
-      height: 100vh;          /* 原本是 min-height: 100vh; 改成固定高度 */
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
-    
     header {
       padding: 12px 16px;
       background: #ffffff;
@@ -202,10 +201,13 @@
 
     .main {
       display: flex;
-      flex: 1;
+      flex: none;
+      height: calc(100vh - 86px);
+      min-height: 620px;
       padding: 12px 8px 88px;
       gap: 8px;
       overflow: hidden;
+      scroll-margin-top: 76px;
     }
 
     /* 左邊分類 */
@@ -554,8 +556,15 @@
     @media (max-width: 768px) {
       .main {
         flex-direction: column;
-        padding-bottom: 80px;
+    
+        /* ✅ 新增首頁 Banner 後，手機版不要固定高度 */
+        height: auto;
+        min-height: auto;
+        overflow: visible;
+    
+        padding-bottom: 96px;
       }
+    
       .category-panel {
         width: 100%;
         max-width: none;
@@ -563,18 +572,19 @@
         border-bottom-left-radius: 16px;
         border-bottom-right-radius: 16px;
       }
+    
       .category-title {
         display: none;
       }
     
-      /* 原本這裡的 .category-btn 改成這樣 */
+      /* 原本這裡的 .category-btn 保留 */
       .category-btn {
-        flex: 0 0 25%;       /* 固定佔一列的 1/4 */
+        flex: 0 0 25%;
         max-width: 25%;
-        white-space: nowrap; /* 文字不要換行 */
+        white-space: nowrap;
         flex-shrink: 0;
-        text-align: center;  /* 置中比較像 Tab 標籤 */
-        padding: 6px 4px;    /* 縮小一點 padding，按鈕比較不會太高 */
+        text-align: center;
+        padding: 6px 4px;
         font-size: 13px;
       }
     
@@ -589,6 +599,15 @@
       .item-panel {
         width: 100%;
         margin-top: 8px;
+    
+        /* ✅ 補這個，避免商品區高度太矮 */
+        min-height: 520px;
+      }
+    
+      /* ✅ 補這個，手機版商品列表不要被內部 overflow 卡住 */
+      .item-list {
+        max-height: none;
+        overflow-y: visible;
       }
     
       .cart-panel {
