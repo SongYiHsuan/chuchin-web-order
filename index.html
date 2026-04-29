@@ -834,7 +834,7 @@ body {
 
 .app {
   max-width: 1280px;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0 auto;
   padding: 0 14px;
 }
@@ -1287,7 +1287,85 @@ header button:hover,
   }
 
   .main {
+    flex-direction: column;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
     padding: 18px 8px 86px;
+  }
+
+  /* ✅ 手機版扁分類列：一開始隱藏 */
+  .category-panel {
+    position: fixed;
+    top: var(--mobile-sticky-top, 64px);
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-width: none;
+
+    border-radius: 999px;
+    border: 1px solid #edf0f3;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10);
+
+    padding: 8px;
+    z-index: 30;
+
+    transform: translateY(-130%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .22s ease, opacity .22s ease;
+  }
+
+  /* ✅ 往下滑後才顯示 */
+  .app.show-mobile-category-bar .category-panel {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .category-title {
+    display: none;
+  }
+
+  #categoryList {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .category-btn {
+    flex: 0 0 25%;
+    max-width: 25%;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 14px;
+  }
+
+  .item-panel {
+    width: 100%;
+    margin-top: 8px;
+    min-height: 520px;
+    border-radius: 18px;
+  }
+
+  .item-list {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .cart-panel {
+    display: none;
+  }
+
+  .cart-fab {
+    display: flex;
   }
 
   .section-header h2 {
@@ -1298,12 +1376,7 @@ header button:hover,
     width: 72px;
     height: 72px;
   }
-
-  .category-panel,
-  .item-panel {
-    border-radius: 18px;
-  }
-  }
+}
   
   @media (max-width: 420px) {
     .home-hero h2 {
@@ -1772,6 +1845,57 @@ async function loadMyOrders_() {
       block: "start"
     });
   }
+  function syncMobileStickyTop_() {
+  const header = document.querySelector("header");
+  const headerH = header ? header.offsetHeight : 56;
+
+  document.documentElement.style.setProperty(
+    "--mobile-sticky-top",
+    `${headerH + 8}px`
+  );
+}
+
+function updateMobileStickyCategoryBar_() {
+  const appEl = document.querySelector(".app");
+  if (!appEl) return;
+
+  const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+  if (!isMobile) {
+    appEl.classList.remove("show-mobile-category-bar");
+    return;
+  }
+
+  const categoryStrip = document.querySelector(".home-category-strip");
+  const shopMain = document.getElementById("shopMain");
+
+  const triggerY = categoryStrip
+    ? categoryStrip.offsetTop + categoryStrip.offsetHeight - 20
+    : shopMain
+      ? shopMain.offsetTop - 80
+      : 240;
+
+  if (window.scrollY > triggerY) {
+    appEl.classList.add("show-mobile-category-bar");
+  } else {
+    appEl.classList.remove("show-mobile-category-bar");
+  }
+}
+
+window.addEventListener("scroll", updateMobileStickyCategoryBar_, { passive: true });
+
+window.addEventListener("resize", () => {
+  syncMobileStickyTop_();
+  updateMobileStickyCategoryBar_();
+});
+
+window.addEventListener("load", () => {
+  syncMobileStickyTop_();
+  updateMobileStickyCategoryBar_();
+});
+
+syncMobileStickyTop_();
+updateMobileStickyCategoryBar_();
 
 function renderMyOrders_(orders) {
   if (!orders.length) {
@@ -2442,6 +2566,7 @@ if (heroShopBtn) {
     });
   
     renderHomeCategories_();
+    updateMobileStickyCategoryBar_();
   }
   function getCategoryIcon_(cat) {
       const text = String(cat || "").toLowerCase();
