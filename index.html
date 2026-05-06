@@ -1048,6 +1048,20 @@ header button:hover,
   box-shadow: inset 0 0 0 1px rgba(17,24,39,0.03);
   transition: transform .18s ease, box-shadow .18s ease;
 }
+    
+.home-category-icon img {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+  display: block;
+}
+
+.home-category-icon.icon-missing::after {
+  content: "No Icon";
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 700;
+}
 
 .home-category-card:hover .home-category-icon {
   transform: translateY(-5px);
@@ -1280,19 +1294,6 @@ header button:hover,
     width: 86px;
     height: 86px;
     font-size: 26px;
-  }
-  .home-category-icon img {
-    width: 72%;
-    height: 72%;
-    object-fit: contain;
-    display: block;
-  }
-  
-  .home-category-icon.icon-missing::after {
-    content: "No Icon";
-    font-size: 12px;
-    color: #9ca3af;
-    font-weight: 700;
   }
 
   .home-category-card {
