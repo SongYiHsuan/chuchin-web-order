@@ -1281,6 +1281,19 @@ header button:hover,
     height: 86px;
     font-size: 26px;
   }
+  .home-category-icon img {
+    width: 72%;
+    height: 72%;
+    object-fit: contain;
+    display: block;
+  }
+  
+  .home-category-icon.icon-missing::after {
+    content: "No Icon";
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: 700;
+  }
 
   .home-category-card {
     min-width: 92px;
@@ -2568,19 +2581,38 @@ if (heroShopBtn) {
     renderHomeCategories_();
     updateMobileStickyCategoryBar_();
   }
-  function getCategoryIcon_(cat) {
-      const text = String(cat || "").toLowerCase();
-    
-      if (text.includes("殼") || text.includes("case") || text.includes("保護")) return "▯";
-      if (text.includes("線") || text.includes("cable") || text.includes("傳輸")) return "⌁";
-      if (text.includes("充") || text.includes("charger") || text.includes("插頭")) return "⚡";
-      if (text.includes("電池") || text.includes("power") || text.includes("行動")) return "▰";
-      if (text.includes("膜") || text.includes("貼")) return "◯";
-      if (text.includes("鏡頭")) return "◎";
-      if (text.includes("耳機") || text.includes("音")) return "♪";
-    
-      return "◆";
+  function getCategoryIconFile_(cat) {
+    const text = String(cat || "").trim().toLowerCase();
+  
+    // ✅ 截圖中的 icon 檔名對應
+    if (text.includes("二手平板") || text.includes("平板") || text.includes("tablet")) {
+      return "./二手平板.png?v=2";
     }
+  
+    if (text.includes("二手機") || text.includes("手機") || text.includes("phone")) {
+      return "./二手機.png?v=2";
+    }
+  
+    if (text.includes("保護殼") || text.includes("殼") || text.includes("case")) {
+      return "./保護殼.png?v=2";
+    }
+  
+    if (text.includes("保護貼") || text.includes("貼") || text.includes("膜")) {
+      return "./保護貼.png?v=2";
+    }
+  
+    if (text.includes("客製") || text.includes("客訂") || text.includes("客制")) {
+      // ⚠️ 建議 GitHub 檔名不要用 /，建議改成：客製客訂.png
+      return "./客製客訂.png?v=2";
+    }
+  
+    if (text.includes("配件") || text.includes("充電") || text.includes("線") || text.includes("charger") || text.includes("cable")) {
+      return "./配件.png?v=2";
+    }
+  
+    // 找不到對應時的預設圖
+    return "./配件.png?v=2";
+  }
 
   function renderHomeCategories_() {
       const homeCategoryList = document.getElementById("homeCategoryList");
@@ -2593,8 +2625,17 @@ if (heroShopBtn) {
     
         const card = document.createElement("div");
         card.className = "home-category-card";
+        const iconFile = getCategoryIconFile_(cat);
+
         card.innerHTML = `
-          <div class="home-category-icon">${escapeHtml(getCategoryIcon_(cat))}</div>
+          <div class="home-category-icon">
+            <img
+              src="${iconFile}"
+              alt="${escapeHtml(cat)}"
+              loading="lazy"
+              onerror="this.style.display='none'; this.parentElement.classList.add('icon-missing');"
+            >
+          </div>
           <div class="home-category-name">${escapeHtml(cat)}</div>
           <div class="home-category-count">${count} products</div>
         `;
