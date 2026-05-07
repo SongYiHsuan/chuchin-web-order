@@ -1407,6 +1407,121 @@ header button:hover,
       padding: 0 16px;
     }
   }
+    /* ===== 團訂功能 ===== */
+  
+  .group-order-bar {
+    margin: 14px 8px 0;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: #111827;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  }
+  
+  .group-order-label {
+    font-size: 12px;
+    font-weight: 900;
+    color: #cfe3f3;
+    margin-bottom: 4px;
+  }
+  
+  .group-order-title {
+    font-size: 18px;
+    font-weight: 900;
+  }
+  
+  .group-order-sub {
+    font-size: 13px;
+    opacity: 0.82;
+    margin-top: 3px;
+  }
+  
+  .group-order-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  
+  .group-light-btn {
+    border: 1px solid rgba(255,255,255,0.28);
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  
+  .group-light-btn:hover {
+    background: rgba(255,255,255,0.2);
+  }
+  
+  .group-member-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #fff;
+  }
+  
+  .group-member-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  
+  .group-member-name {
+    font-weight: 900;
+    color: #111827;
+  }
+  
+  .group-member-subtotal {
+    color: #2253a0;
+    font-weight: 900;
+  }
+  
+  .group-member-items {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #333;
+    white-space: pre-wrap;
+  }
+  
+  .group-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #eef4ff;
+    color: #2253a0;
+    font-size: 12px;
+    font-weight: 900;
+  }
+  
+  @media (max-width: 768px) {
+    .group-order-bar {
+      margin: 10px 10px 0;
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  
+    .group-order-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+  
+    .group-light-btn {
+      width: 100%;
+    }
+  }
   </style>
 </head>
 <body>
@@ -1431,6 +1546,7 @@ header button:hover,
 
       <div class="home-hero-actions">
         <button type="button" class="hero-primary-btn" id="heroShopBtn">立即選購</button>
+        <button type="button" class="hero-secondary-btn" id="heroGroupBtn">我要開團</button>
         <button type="button" class="hero-secondary-btn" id="heroMemberBtn">會員資料</button>
       </div>
     </div>
@@ -1449,6 +1565,18 @@ header button:hover,
     <div class="home-category-title">商品分類</div>
     <div id="homeCategoryList" class="home-category-list"></div>
   </section>
+  <section class="group-order-bar" id="groupOrderBar" style="display:none;">
+  <div class="group-order-info">
+    <div class="group-order-label">團訂模式</div>
+    <div class="group-order-title" id="groupOrderTitle">團訂</div>
+    <div class="group-order-sub" id="groupOrderSub">請選擇商品後加入團訂</div>
+  </div>
+
+  <div class="group-order-actions">
+    <button type="button" class="group-light-btn" id="copyGroupLinkBtn">複製連結</button>
+    <button type="button" class="group-light-btn" id="openGroupSummaryBtn">查看團訂</button>
+  </div>
+</section>
 
   <div class="main" id="shopMain">
     <aside class="category-panel">
@@ -1676,6 +1804,88 @@ header button:hover,
     </div>
   </div>
 </div>
+<!-- 建立團訂 Modal -->
+<div class="modal-backdrop" id="groupCreateModal">
+  <div class="modal">
+    <h2>建立團訂</h2>
+    <p>建立後會產生一個團訂連結，可以貼到 LINE 群組讓大家一起點餐。</p>
+
+    <div class="field">
+      <label>團訂名稱</label>
+      <input id="groupTitleInput" type="text" placeholder="例如：公司午餐、今天下午茶" />
+    </div>
+
+    <div class="field">
+      <label>主揪姓名</label>
+      <input id="groupHostNameInput" type="text" placeholder="請輸入主揪姓名" />
+    </div>
+
+    <div class="field">
+      <label>主揪電話</label>
+      <input id="groupHostPhoneInput" type="tel" placeholder="請輸入主揪電話" />
+    </div>
+
+    <div class="field">
+      <label>預計取餐 / 出貨時間</label>
+      <input id="groupPickupTimeInput" type="text" placeholder="例如：今天 18:00、明天中午" />
+    </div>
+
+    <div class="field">
+      <label>備註</label>
+      <textarea id="groupNoteInput" rows="2" placeholder="可不填"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="groupCreateCancelBtn">取消</button>
+      <button class="btn-primary" id="groupCreateSubmitBtn">建立團訂</button>
+    </div>
+  </div>
+</div>
+
+<!-- 加入團訂 Modal -->
+<div class="modal-backdrop" id="groupMemberModal">
+  <div class="modal">
+    <h2>加入團訂</h2>
+    <p>請填寫你的資料，這樣主揪可以知道每個人點了什麼。</p>
+
+    <div class="field">
+      <label>你的名字</label>
+      <input id="groupMemberNameInput" type="text" placeholder="例如：小明" />
+    </div>
+
+    <div class="field">
+      <label>電話</label>
+      <input id="groupMemberPhoneInput" type="tel" placeholder="可填手機或分機" />
+    </div>
+
+    <div class="field">
+      <label>個人備註</label>
+      <textarea id="groupMemberNoteInput" rows="2" placeholder="例如：不要辣、幫我另外裝袋"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="groupMemberCancelBtn">取消</button>
+      <button class="btn-primary" id="groupMemberSubmitBtn">加入團訂</button>
+    </div>
+  </div>
+</div>
+
+<!-- 團訂總覽 Modal -->
+<div class="modal-backdrop" id="groupSummaryModal">
+  <div class="modal cart-modal" style="max-width:760px;">
+    <h2>團訂總覽</h2>
+    <p id="groupSummaryDesc">載入中...</p>
+
+    <div id="groupSummaryList" style="flex:1;overflow-y:auto;min-height:0;"></div>
+
+    <div class="cart-summary" id="groupSummaryTotal"></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="groupSummaryCloseBtn">關閉</button>
+      <button class="btn-primary" id="groupSubmitBtn" style="display:none;">主揪送出團訂</button>
+    </div>
+  </div>
+</div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
   import {
@@ -1751,6 +1961,20 @@ header button:hover,
   let specModalVariants = [];
   let specSelectedVariant = null;
   let specSelectedQty = 1;
+  // ===== 團訂狀態 =====
+  let groupOrder = {
+    active: false,
+    groupId: "",
+    hostToken: "",
+    isHost: false,
+    title: "",
+    hostName: "",
+    hostPhone: "",
+    pickupTime: "",
+    status: "",
+    shareUrl: "",
+    members: []
+  };
 
   // ==== DOM ====
   
@@ -1814,17 +2038,46 @@ header button:hover,
   const NOTICE_KEY = "wholesaleNoticeHideUntil"; // 存到 localStorage
 
   // ===== Firebase Auth 狀態 =====
-let currentUser = null;
-
-// ===== Auth Modal DOM =====
-const authModal = document.getElementById("authModal");
-const authEmail = document.getElementById("authEmail");
-const authPassword = document.getElementById("authPassword");
-const authCloseBtn = document.getElementById("authCloseBtn");
-const authRegisterBtn = document.getElementById("authRegisterBtn");
-const authLoginBtn = document.getElementById("authLoginBtn");
-const authLogoutBtn = document.getElementById("authLogoutBtn");
-const authForgotBtn = document.getElementById("authForgotBtn");
+  let currentUser = null;
+  
+  // ===== Auth Modal DOM =====
+  const authModal = document.getElementById("authModal");
+  const authEmail = document.getElementById("authEmail");
+  const authPassword = document.getElementById("authPassword");
+  const authCloseBtn = document.getElementById("authCloseBtn");
+  const authRegisterBtn = document.getElementById("authRegisterBtn");
+  const authLoginBtn = document.getElementById("authLoginBtn");
+  const authLogoutBtn = document.getElementById("authLogoutBtn");
+  const authForgotBtn = document.getElementById("authForgotBtn");
+    // ===== 團訂 DOM =====
+  const groupOrderBar = document.getElementById("groupOrderBar");
+  const groupOrderTitle = document.getElementById("groupOrderTitle");
+  const groupOrderSub = document.getElementById("groupOrderSub");
+  const copyGroupLinkBtn = document.getElementById("copyGroupLinkBtn");
+  const openGroupSummaryBtn = document.getElementById("openGroupSummaryBtn");
+  
+  const groupCreateModal = document.getElementById("groupCreateModal");
+  const groupTitleInput = document.getElementById("groupTitleInput");
+  const groupHostNameInput = document.getElementById("groupHostNameInput");
+  const groupHostPhoneInput = document.getElementById("groupHostPhoneInput");
+  const groupPickupTimeInput = document.getElementById("groupPickupTimeInput");
+  const groupNoteInput = document.getElementById("groupNoteInput");
+  const groupCreateCancelBtn = document.getElementById("groupCreateCancelBtn");
+  const groupCreateSubmitBtn = document.getElementById("groupCreateSubmitBtn");
+  
+  const groupMemberModal = document.getElementById("groupMemberModal");
+  const groupMemberNameInput = document.getElementById("groupMemberNameInput");
+  const groupMemberPhoneInput = document.getElementById("groupMemberPhoneInput");
+  const groupMemberNoteInput = document.getElementById("groupMemberNoteInput");
+  const groupMemberCancelBtn = document.getElementById("groupMemberCancelBtn");
+  const groupMemberSubmitBtn = document.getElementById("groupMemberSubmitBtn");
+  
+  const groupSummaryModal = document.getElementById("groupSummaryModal");
+  const groupSummaryDesc = document.getElementById("groupSummaryDesc");
+  const groupSummaryList = document.getElementById("groupSummaryList");
+  const groupSummaryTotal = document.getElementById("groupSummaryTotal");
+  const groupSummaryCloseBtn = document.getElementById("groupSummaryCloseBtn");
+  const groupSubmitBtn = document.getElementById("groupSubmitBtn");
 
 async function loadMyOrders_() {
     if (!currentUser?.email) {
@@ -2277,6 +2530,494 @@ async function loadMemberFromFirestore_(uid){
     toastEl.classList.add("show");
     setTimeout(() => toastEl.classList.remove("show"), 2200);
   }
+  function getCurrentPageBaseUrl_() {
+    return window.location.origin + window.location.pathname;
+  }
+  
+  async function apiPost_(mode, payload) {
+    const resp = await fetch(`${API_BASE_URL}?mode=${encodeURIComponent(mode)}`, {
+      method: "POST",
+      redirect: "follow",
+      credentials: "omit",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        mode,
+        ...payload
+      })
+    });
+  
+    const text = await resp.text();
+  
+    let data = null;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("後端回傳不是 JSON：" + text.slice(0, 120));
+    }
+  
+    if (!resp.ok || data.status === "error") {
+      throw new Error(data.message || `HTTP ${resp.status}`);
+    }
+  
+    return data;
+  }
+  function getGroupUrlParams_() {
+  const params = new URLSearchParams(window.location.search);
+
+  return {
+    groupId: params.get("groupId") || "",
+    hostToken: params.get("hostToken") || ""
+  };
+}
+
+function buildGroupShareUrl_(groupId) {
+  const url = new URL(getCurrentPageBaseUrl_());
+  url.searchParams.set("groupId", groupId);
+  return url.toString();
+}
+
+function buildGroupHostUrl_(groupId, hostToken) {
+  const url = new URL(getCurrentPageBaseUrl_());
+  url.searchParams.set("groupId", groupId);
+  url.searchParams.set("hostToken", hostToken);
+  return url.toString();
+}
+
+function openGroupCreateModal_() {
+  groupTitleInput.value = "";
+  groupHostNameInput.value = member.name || "";
+  groupHostPhoneInput.value = member.phone || "";
+  groupPickupTimeInput.value = "";
+  groupNoteInput.value = "";
+  groupCreateModal.classList.add("show");
+}
+
+function closeGroupCreateModal_() {
+  groupCreateModal.classList.remove("show");
+}
+
+function openGroupMemberModal_() {
+  if (!groupOrder.active || !groupOrder.groupId) {
+    showToast("目前不是團訂模式");
+    return;
+  }
+
+  if (!cart.length) {
+    showToast("請先選擇品項");
+    return;
+  }
+
+  groupMemberNameInput.value = localStorage.getItem("groupMemberName") || member.name || "";
+  groupMemberPhoneInput.value = localStorage.getItem("groupMemberPhone") || member.phone || "";
+  groupMemberNoteInput.value = "";
+  groupMemberModal.classList.add("show");
+}
+
+function closeGroupMemberModal_() {
+  groupMemberModal.classList.remove("show");
+}
+
+function renderGroupBar_() {
+  if (!groupOrder.active) {
+    groupOrderBar.style.display = "none";
+    return;
+  }
+
+  groupOrderBar.style.display = "";
+  groupOrderTitle.textContent = groupOrder.title || "團訂";
+  groupOrderSub.textContent = groupOrder.isHost
+    ? `主揪模式｜狀態：${groupOrder.status || "開放中"}`
+    : `加入團訂｜狀態：${groupOrder.status || "開放中"}`;
+
+  if (checkoutBtn) {
+    checkoutBtn.textContent = groupOrder.isHost ? "主揪加入餐點" : "加入團訂";
+  }
+
+  if (cartModalCheckoutBtn) {
+    cartModalCheckoutBtn.textContent = groupOrder.isHost ? "主揪加入餐點" : "加入團訂";
+  }
+}
+
+async function createGroupOrder_() {
+  const title = groupTitleInput.value.trim();
+  const hostName = groupHostNameInput.value.trim();
+  const hostPhone = groupHostPhoneInput.value.trim();
+  const pickupTime = groupPickupTimeInput.value.trim();
+  const note = groupNoteInput.value.trim();
+
+  if (!title) {
+    showToast("請輸入團訂名稱");
+    return;
+  }
+
+  if (!hostName || !hostPhone) {
+    showToast("請輸入主揪姓名與電話");
+    return;
+  }
+
+  groupCreateSubmitBtn.disabled = true;
+  const oldText = groupCreateSubmitBtn.textContent;
+  groupCreateSubmitBtn.textContent = "建立中…";
+
+  try {
+    const data = await apiPost_("createGroupOrder", {
+      title,
+      hostName,
+      hostPhone,
+      pickupTime,
+      note,
+      shareBaseUrl: getCurrentPageBaseUrl_()
+    });
+
+    const groupId = data.groupId || "";
+    const hostToken = data.hostToken || "";
+    const shareUrl = data.shareUrl || buildGroupShareUrl_(groupId);
+    const hostUrl = data.hostUrl || buildGroupHostUrl_(groupId, hostToken);
+
+    if (!groupId || !hostToken) {
+      showToast("建立失敗：後端沒有回傳 groupId / hostToken");
+      return;
+    }
+
+    groupOrder = {
+      active: true,
+      groupId,
+      hostToken,
+      isHost: true,
+      title,
+      hostName,
+      hostPhone,
+      pickupTime,
+      status: "開放中",
+      shareUrl,
+      members: []
+    };
+
+    closeGroupCreateModal_();
+    renderGroupBar_();
+
+    await navigator.clipboard.writeText(shareUrl).catch(() => {});
+    showToast("團訂已建立，連結已複製");
+
+    // 主揪建立後，網址切到主揪管理網址，避免重新整理後遺失主揪權限
+    window.history.replaceState({}, "", hostUrl);
+
+  } catch (err) {
+    console.error(err);
+    showToast("建立團訂失敗：" + err.message);
+  } finally {
+    groupCreateSubmitBtn.disabled = false;
+    groupCreateSubmitBtn.textContent = oldText;
+  }
+}
+
+async function loadGroupOrder_() {
+  if (!groupOrder.groupId) return;
+
+  try {
+    const data = await apiGet_("getGroupOrder", {
+      groupId: groupOrder.groupId,
+      hostToken: groupOrder.hostToken || ""
+    });
+
+    const g = data.group || {};
+    const members = Array.isArray(data.members) ? data.members : [];
+
+    groupOrder = {
+      ...groupOrder,
+      active: true,
+      title: g.title || groupOrder.title || "團訂",
+      hostName: g.hostName || "",
+      hostPhone: g.hostPhone || "",
+      pickupTime: g.pickupTime || "",
+      status: g.status || "開放中",
+      shareUrl: g.shareUrl || buildGroupShareUrl_(groupOrder.groupId),
+      members
+    };
+
+    renderGroupBar_();
+
+  } catch (err) {
+    console.error(err);
+    showToast("讀取團訂失敗：" + err.message);
+  }
+}
+
+function getCartGoodsPayload_() {
+  let subtotal = 0;
+
+  const items = cart
+    .filter(c => c.key !== SHIPPING_KEY)
+    .map(c => {
+      const lineTotal = c.price * c.quantity;
+      subtotal += lineTotal;
+
+      return {
+        category: c.category,
+        name: c.name,
+        spec: c.spec || "",
+        price: c.price,
+        quantity: c.quantity,
+        lineTotal
+      };
+    });
+
+  return {
+    items,
+    subtotal
+  };
+}
+
+async function saveGroupMemberItems_() {
+  if (!groupOrder.active || !groupOrder.groupId) {
+    showToast("目前不是團訂模式");
+    return;
+  }
+
+  if (groupOrder.status && groupOrder.status !== "開放中") {
+    showToast("此團訂已鎖單或已送出");
+    return;
+  }
+
+  const memberName = groupMemberNameInput.value.trim();
+  const memberPhone = groupMemberPhoneInput.value.trim();
+  const note = groupMemberNoteInput.value.trim();
+
+  if (!memberName) {
+    showToast("請輸入你的名字");
+    return;
+  }
+
+  const { items, subtotal } = getCartGoodsPayload_();
+
+  if (!items.length) {
+    showToast("請先選擇品項");
+    return;
+  }
+
+  groupMemberSubmitBtn.disabled = true;
+  const oldText = groupMemberSubmitBtn.textContent;
+  groupMemberSubmitBtn.textContent = "加入中…";
+
+  try {
+    const data = await apiPost_("saveGroupItems", {
+      groupId: groupOrder.groupId,
+      memberName,
+      memberPhone,
+      note,
+      subtotal,
+      items
+    });
+
+    localStorage.setItem("groupMemberName", memberName);
+    localStorage.setItem("groupMemberPhone", memberPhone);
+
+    closeGroupMemberModal_();
+    cart = [];
+    renderCart();
+
+    showToast("已加入團訂");
+
+    await loadGroupOrder_();
+    openGroupSummaryModal_();
+
+  } catch (err) {
+    console.error(err);
+    showToast("加入團訂失敗：" + err.message);
+  } finally {
+    groupMemberSubmitBtn.disabled = false;
+    groupMemberSubmitBtn.textContent = oldText;
+  }
+}
+
+function renderGroupSummary_() {
+  const members = groupOrder.members || [];
+
+  groupSummaryDesc.innerHTML = `
+    <span class="group-status-pill">${escapeHtml(groupOrder.status || "開放中")}</span>
+    <div style="margin-top:8px;">
+      ${escapeHtml(groupOrder.title || "團訂")}
+      ${groupOrder.pickupTime ? `｜${escapeHtml(groupOrder.pickupTime)}` : ""}
+    </div>
+  `;
+
+  if (!members.length) {
+    groupSummaryList.innerHTML = `<div class="order-history-empty">目前還沒有人加入餐點</div>`;
+    groupSummaryTotal.innerHTML = "";
+    groupSubmitBtn.style.display = groupOrder.isHost ? "" : "none";
+    return;
+  }
+
+  let grandTotal = 0;
+
+  groupSummaryList.innerHTML = members.map(m => {
+    const items = Array.isArray(m.items) ? m.items : [];
+    const subtotal = Number(m.subtotal || items.reduce((s, it) => s + Number(it.lineTotal || 0), 0));
+    grandTotal += subtotal;
+
+    const itemText = items.map(it => {
+      const spec = it.spec ? `（${it.spec}）` : "";
+      return `${it.name}${spec} × ${it.quantity}　$${it.lineTotal || Number(it.price || 0) * Number(it.quantity || 0)}`;
+    }).join("\n");
+
+    return `
+      <div class="group-member-card">
+        <div class="group-member-top">
+          <div>
+            <div class="group-member-name">${escapeHtml(m.memberName || "")}</div>
+            <div style="font-size:12px;color:#666;">${escapeHtml(m.memberPhone || "")}</div>
+          </div>
+          <div class="group-member-subtotal">$${subtotal}</div>
+        </div>
+
+        <div class="group-member-items">${escapeHtml(itemText)}</div>
+
+        ${
+          m.note
+            ? `<div style="font-size:12px;color:#666;margin-top:8px;">備註：${escapeHtml(m.note)}</div>`
+            : ""
+        }
+      </div>
+    `;
+  }).join("");
+
+  groupSummaryTotal.innerHTML = `
+    <div class="cart-summary-row">
+      <span>團訂人數</span>
+      <span><strong>${members.length}</strong></span>
+    </div>
+    <div class="cart-summary-row">
+      <span>團訂總額</span>
+      <span><strong>$${grandTotal}</strong></span>
+    </div>
+  `;
+
+  groupSubmitBtn.style.display = groupOrder.isHost ? "" : "none";
+  groupSubmitBtn.disabled = !members.length || groupOrder.status !== "開放中";
+}
+
+async function openGroupSummaryModal_() {
+  if (!groupOrder.active || !groupOrder.groupId) {
+    showToast("目前不是團訂模式");
+    return;
+  }
+
+  groupSummaryModal.classList.add("show");
+  groupSummaryList.innerHTML = `<div class="order-history-empty">載入中...</div>`;
+
+  await loadGroupOrder_();
+  renderGroupSummary_();
+}
+
+function closeGroupSummaryModal_() {
+  groupSummaryModal.classList.remove("show");
+}
+
+async function submitGroupOrder_() {
+  if (!groupOrder.isHost) {
+    showToast("只有主揪可以送出團訂");
+    return;
+  }
+
+  if (!confirm("確定要送出整筆團訂嗎？送出後會寫入訂單紀錄。")) {
+    return;
+  }
+
+  groupSubmitBtn.disabled = true;
+  const oldText = groupSubmitBtn.textContent;
+  groupSubmitBtn.textContent = "送出中…";
+
+  try {
+    const data = await apiPost_("submitGroupOrder", {
+      groupId: groupOrder.groupId,
+      hostToken: groupOrder.hostToken,
+      paymentMethod: "現金",
+      pickup: true
+    });
+
+    showToast("團訂已送出，訂單編號：" + (data.orderId || ""));
+
+    await loadGroupOrder_();
+    renderGroupSummary_();
+
+  } catch (err) {
+    console.error(err);
+    showToast("送出團訂失敗：" + err.message);
+  } finally {
+    groupSubmitBtn.disabled = false;
+    groupSubmitBtn.textContent = oldText;
+  }
+}
+  
+  async function copyGroupLink_() {
+    if (!groupOrder.active || !groupOrder.groupId) {
+      showToast("目前沒有團訂連結");
+      return;
+    }
+  
+    const url = groupOrder.shareUrl || buildGroupShareUrl_(groupOrder.groupId);
+  
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("團訂連結已複製");
+    } catch {
+      prompt("請複製團訂連結", url);
+    }
+  }
+  
+  async function initGroupMode_() {
+    const { groupId, hostToken } = getGroupUrlParams_();
+  
+    if (!groupId) {
+      renderGroupBar_();
+      return;
+    }
+  
+    groupOrder = {
+      ...groupOrder,
+      active: true,
+      groupId,
+      hostToken,
+      isHost: !!hostToken,
+      shareUrl: buildGroupShareUrl_(groupId)
+    };
+  
+    renderGroupBar_();
+    await loadGroupOrder_();
+  
+    if (groupOrder.isHost) {
+      showToast("已進入主揪團訂管理模式");
+    } else {
+      showToast("已進入團訂模式");
+    }
+  }
+  
+  async function apiGet_(mode, params = {}) {
+    const qs = new URLSearchParams({
+      mode,
+      ...params
+    });
+  
+    const resp = await fetch(`${API_BASE_URL}?${qs.toString()}`, {
+      method: "GET",
+      credentials: "omit"
+    });
+  
+    const text = await resp.text();
+  
+    let data = null;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("後端回傳不是 JSON：" + text.slice(0, 120));
+    }
+  
+    if (!resp.ok || data.status === "error") {
+      throw new Error(data.message || `HTTP ${resp.status}`);
+    }
+  
+    return data;
+  }
 
   function loadMemberFromStorage() {
     try {
@@ -2473,7 +3214,8 @@ async function loadMemberFromFirestore_(uid){
     });
   }
   const heroShopBtn = document.getElementById("heroShopBtn");
-const heroMemberBtn = document.getElementById("heroMemberBtn");
+  const heroGroupBtn = document.getElementById("heroGroupBtn");
+  const heroMemberBtn = document.getElementById("heroMemberBtn");
 
 if (heroShopBtn) {
     heroShopBtn.addEventListener("click", scrollToShopArea_);
@@ -3269,8 +4011,59 @@ function renderCart() {
       if (e.target === noticeModal) closeNoticeModal();
     });
   }
-
-
+  if (heroGroupBtn) {
+    heroGroupBtn.addEventListener("click", openGroupCreateModal_);
+  }
+  
+  if (groupCreateCancelBtn) {
+    groupCreateCancelBtn.addEventListener("click", closeGroupCreateModal_);
+  }
+  
+  if (groupCreateSubmitBtn) {
+    groupCreateSubmitBtn.addEventListener("click", createGroupOrder_);
+  }
+  
+  if (groupCreateModal) {
+    groupCreateModal.addEventListener("click", (e) => {
+      if (e.target === groupCreateModal) closeGroupCreateModal_();
+    });
+  }
+  
+  if (groupMemberCancelBtn) {
+    groupMemberCancelBtn.addEventListener("click", closeGroupMemberModal_);
+  }
+  
+  if (groupMemberSubmitBtn) {
+    groupMemberSubmitBtn.addEventListener("click", saveGroupMemberItems_);
+  }
+  
+  if (groupMemberModal) {
+    groupMemberModal.addEventListener("click", (e) => {
+      if (e.target === groupMemberModal) closeGroupMemberModal_();
+    });
+  }
+  
+  if (copyGroupLinkBtn) {
+    copyGroupLinkBtn.addEventListener("click", copyGroupLink_);
+  }
+  
+  if (openGroupSummaryBtn) {
+    openGroupSummaryBtn.addEventListener("click", openGroupSummaryModal_);
+  }
+  
+  if (groupSummaryCloseBtn) {
+    groupSummaryCloseBtn.addEventListener("click", closeGroupSummaryModal_);
+  }
+  
+  if (groupSummaryModal) {
+    groupSummaryModal.addEventListener("click", (e) => {
+      if (e.target === groupSummaryModal) closeGroupSummaryModal_();
+    });
+  }
+  
+  if (groupSubmitBtn) {
+    groupSubmitBtn.addEventListener("click", submitGroupOrder_);
+  }
 
   // 上方「會員資料」按鈕：單純開資料視窗，不送單
   memberButton.addEventListener("click", () => {
@@ -3369,15 +4162,26 @@ function renderCart() {
     cartModal.classList.remove("show");
   });
 
-  cartModalCheckoutBtn.addEventListener("click", ensureLoginThenCheckout_);
-  checkoutBtn.addEventListener("click", ensureLoginThenCheckout_);
+  function handleCheckoutButton_() {
+    if (groupOrder.active) {
+      openGroupMemberModal_();
+      return;
+    }
+  
+    ensureLoginThenCheckout_();
+  }
+  
+  cartModalCheckoutBtn.addEventListener("click", handleCheckoutButton_);
+  checkoutBtn.addEventListener("click", handleCheckoutButton_);
   // ==== 初始化 ====
   initDeliveryTimeSelectors();  
   loadMemberFromStorage();
   updateMemberButtonUI_();
   loadMenu();
-  renderCart(); // 初始化畫面
+  renderCart();
   autoOpenMemberModalFromURL();
+  initGroupMode_();
+  
   if (shouldShowNotice()) openNoticeModal();
 </script>
 </body>
